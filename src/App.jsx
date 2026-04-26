@@ -249,6 +249,26 @@ export default function App() {
     notify(`Hutang ${name} telah lunas!`, 'success');
   };
 
+  const addDebt = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const amount = Number(formData.get('amount'));
+    const name = formData.get('customerName');
+    
+    const newDebt = {
+      id: Date.now(),
+      name,
+      amount,
+      date: new Date().toLocaleDateString('id-ID'),
+      status: 'Belum Lunas',
+      transactionId: `MANUAL-${Date.now()}`
+    };
+    
+    setDebts(prev => [newDebt, ...prev]);
+    setShowDebtModal(false);
+    notify(`Hutang ${name} berhasil dicatat`);
+  };
+
   // --- STATS ---
   const todaySales = transactions.filter(t => {
     const trxDate = new Date(t.date.split(',')[0].split('/').reverse().join('-'));
@@ -339,10 +359,10 @@ export default function App() {
             <Package size={20} /> <span>Inventori</span>
           </div>
           <div className={`nav-link ${activeTab === 'debts' ? 'active' : ''}`} onClick={() => { setActiveTab('debts'); setIsSidebarOpen(false); }}>
-            <Users size={20} /> <span>Kas Bon (Hutang)</span>
+            <Users size={20} /> <span>Kas Bon</span>
           </div>
           <div className={`nav-link ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => { setActiveTab('transactions'); setIsSidebarOpen(false); }}>
-            <History size={20} /> <span>Laporan Penjualan</span>
+            <History size={20} /> <span>Laporan</span>
           </div>
         </div>
         <div style={{ marginTop: 'auto', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
@@ -356,7 +376,7 @@ export default function App() {
           <div className="animate-fade-in">
             <h1 style={{fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem'}}>Ringkasan Toko</h1>
             
-            <div className="dashboard-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+            <div className="responsive-grid grid-3 mb-4">
               <div className="card" style={{ background: 'var(--primary)', color: 'white' }}>
                 <div style={{ opacity: 0.8, fontSize: '0.8rem' }}>Laba Bersih Hari Ini</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '0.5rem' }}>{formatPrice(todayProfit)}</div>
@@ -383,7 +403,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div className="responsive-grid grid-2-1 mb-4">
               <div className="card">
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem' }}>Tren Omzet 7 Hari Terakhir</h3>
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '200px', padding: '0 1rem' }}>
@@ -408,7 +428,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+            <div className="responsive-grid grid-3">
               <div className="card">
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Produk Terlaris</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -602,48 +622,50 @@ export default function App() {
       {/* MODALS */}
       {showPaymentModal && (
         <div className="modal-overlay">
-          <div className="modal modal-pos animate-fade-in" style={{ maxWidth: '850px', display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem' }}>
-            <div style={{ borderRight: '1px solid var(--border)', paddingRight: '2rem' }}>
-              <div className="flex-between mb-6"><h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Pembayaran</h2><button onClick={() => setShowPaymentModal(false)} style={{ background: 'none', border: 'none' }}><X /></button></div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '2rem' }}>
-                <div onClick={() => setPaymentMethod('Tunai')} className={`card ${paymentMethod === 'Tunai' ? 'active' : ''}`} style={{ cursor: 'pointer', textAlign: 'center', padding: '1rem', border: paymentMethod === 'Tunai' ? '2px solid var(--primary)' : '1px solid var(--border)' }}>
-                  <Banknote size={24} style={{ margin: '0 auto 0.5rem' }}/><div style={{ fontWeight: 700 }}>Tunai</div>
+          <div className="modal modal-lg animate-fade-in">
+            <div className="modal-grid">
+              <div style={{ borderRight: '1px solid var(--border)', paddingRight: '2rem' }}>
+                <div className="flex-between mb-6"><h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Pembayaran</h2><button onClick={() => setShowPaymentModal(false)} style={{ background: 'none', border: 'none' }}><X /></button></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '2rem' }}>
+                  <div onClick={() => setPaymentMethod('Tunai')} className={`card ${paymentMethod === 'Tunai' ? 'active' : ''}`} style={{ cursor: 'pointer', textAlign: 'center', padding: '1rem', border: paymentMethod === 'Tunai' ? '2px solid var(--primary)' : '1px solid var(--border)' }}>
+                    <Banknote size={24} style={{ margin: '0 auto 0.5rem' }}/><div style={{ fontWeight: 700 }}>Tunai</div>
+                  </div>
+                  <div onClick={() => setPaymentMethod('QRIS')} className={`card ${paymentMethod === 'QRIS' ? 'active' : ''}`} style={{ cursor: 'pointer', textAlign: 'center', padding: '1rem', border: paymentMethod === 'QRIS' ? '2px solid var(--primary)' : '1px solid var(--border)' }}>
+                    <QrCode size={24} style={{ margin: '0 auto 0.5rem' }}/><div style={{ fontWeight: 700 }}>QRIS</div>
+                  </div>
+                  <div onClick={() => setPaymentMethod('Hutang')} className={`card ${paymentMethod === 'Hutang' ? 'active' : ''}`} style={{ cursor: 'pointer', textAlign: 'center', padding: '1rem', border: paymentMethod === 'Hutang' ? '2px solid #ef4444' : '1px solid var(--border)' }}>
+                    <UserPlus size={24} color="#ef4444" style={{ margin: '0 auto 0.5rem' }}/><div style={{ fontWeight: 700 }}>Kas Bon</div>
+                  </div>
                 </div>
-                <div onClick={() => setPaymentMethod('QRIS')} className={`card ${paymentMethod === 'QRIS' ? 'active' : ''}`} style={{ cursor: 'pointer', textAlign: 'center', padding: '1rem', border: paymentMethod === 'QRIS' ? '2px solid var(--primary)' : '1px solid var(--border)' }}>
-                  <QrCode size={24} style={{ margin: '0 auto 0.5rem' }}/><div style={{ fontWeight: 700 }}>QRIS</div>
-                </div>
-                <div onClick={() => setPaymentMethod('Hutang')} className={`card ${paymentMethod === 'Hutang' ? 'active' : ''}`} style={{ cursor: 'pointer', textAlign: 'center', padding: '1rem', border: paymentMethod === 'Hutang' ? '2px solid #ef4444' : '1px solid var(--border)' }}>
-                  <UserPlus size={24} color="#ef4444" style={{ margin: '0 auto 0.5rem' }}/><div style={{ fontWeight: 700 }}>Kas Bon</div>
-                </div>
+                
+                {paymentMethod === 'Tunai' && (
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, marginBottom: '0.5rem' }}>Uang Diterima</label>
+                    <input type="number" className="card" style={{ width: '100%', fontSize: '2rem', fontWeight: 800, padding: '1rem', textAlign: 'right', marginBottom: '1rem' }} value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} autoFocus />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>{QUICK_CASH.map(amt => <button key={amt} className="btn btn-outline" onClick={() => setPaymentAmount(amt)}>{formatPrice(amt)}</button>)}<button className="btn btn-outline" onClick={() => setPaymentAmount(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0) - discount)}>Pas</button></div>
+                  </div>
+                )}
+                {paymentMethod === 'QRIS' && <div style={{ textAlign: 'center', padding: '2rem', background: '#f3f4f6', borderRadius: '12px' }}><QrCode size={120} style={{ margin: '0 auto 1rem' }}/><p style={{fontWeight: 700}}>Silakan Scan QRIS</p></div>}
+                {paymentMethod === 'Hutang' && (
+                  <div className="animate-fade-in">
+                    <label style={{ display: 'block', fontWeight: 700, marginBottom: '0.5rem' }}>Nama Pelanggan (Wajib)</label>
+                    <input type="text" className="card" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }} value={debtCustomerName} onChange={(e) => setDebtCustomerName(e.target.value)} placeholder="Masukkan nama pelanggan..." autoFocus />
+                    <div style={{ marginTop: '1rem', padding: '1rem', background: '#fff1f2', borderRadius: '8px', color: '#ef4444', fontSize: '0.85rem' }}>* Transaksi ini akan dicatat otomatis ke menu Kas Bon</div>
+                  </div>
+                )}
               </div>
-              
-              {paymentMethod === 'Tunai' && (
-                <div>
-                  <label style={{ display: 'block', fontWeight: 700, marginBottom: '0.5rem' }}>Uang Diterima</label>
-                  <input type="number" className="card" style={{ width: '100%', fontSize: '2rem', fontWeight: 800, padding: '1rem', textAlign: 'right', marginBottom: '1rem' }} value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} autoFocus />
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>{QUICK_CASH.map(amt => <button key={amt} className="btn btn-outline" onClick={() => setPaymentAmount(amt)}>{formatPrice(amt)}</button>)}<button className="btn btn-outline" onClick={() => setPaymentAmount(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0) - discount)}>Uang Pas</button></div>
+              <div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>Ringkasan</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f9fafb', padding: '1.5rem', borderRadius: '12px' }}>
+                  <div className="flex-between"><span>Subtotal</span><span>{formatPrice(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0))}</span></div>
+                  <div className="flex-between" style={{ color: '#10b981' }}><span>Diskon</span><input type="number" style={{ width: '80px', textAlign: 'right', border: '1px solid #ddd', borderRadius: '4px' }} value={discount} onChange={(e) => setDiscount(Number(e.target.value))} /></div>
+                  <div style={{ borderTop: '1px dashed #d1d5db', paddingTop: '1rem' }}>
+                    <div className="flex-between" style={{ fontSize: '1.25rem', fontWeight: 800 }}><span>TOTAL</span><span className="text-primary">{formatPrice(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0) - discount)}</span></div>
+                  </div>
+                  {paymentMethod === 'Tunai' && <div style={{ borderTop: '1px dashed #d1d5db', paddingTop: '1rem' }}><div className="flex-between" style={{ fontSize: '1.25rem', fontWeight: 800, color: '#3b82f6' }}><span>Kembali</span><span>{formatPrice(Math.max(0, Number(paymentAmount) - (cart.reduce((sum, i) => sum + (i.price * i.quantity), 0) - discount)))}</span></div></div>}
                 </div>
-              )}
-              {paymentMethod === 'QRIS' && <div style={{ textAlign: 'center', padding: '2rem', background: '#f3f4f6', borderRadius: '12px' }}><QrCode size={120} style={{ margin: '0 auto 1rem' }}/><p style={{fontWeight: 700}}>Silakan Scan QRIS</p></div>}
-              {paymentMethod === 'Hutang' && (
-                <div className="animate-fade-in">
-                  <label style={{ display: 'block', fontWeight: 700, marginBottom: '0.5rem' }}>Nama Pelanggan (Wajib)</label>
-                  <input type="text" className="card" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }} value={debtCustomerName} onChange={(e) => setDebtCustomerName(e.target.value)} placeholder="Masukkan nama pelanggan..." autoFocus />
-                  <div style={{ marginTop: '1rem', padding: '1rem', background: '#fff1f2', borderRadius: '8px', color: '#ef4444', fontSize: '0.85rem' }}>* Transaksi ini akan dicatat otomatis ke menu Kas Bon</div>
-                </div>
-              )}
-            </div>
-            <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>Ringkasan</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f9fafb', padding: '1.5rem', borderRadius: '12px' }}>
-                <div className="flex-between"><span>Subtotal</span><span>{formatPrice(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0))}</span></div>
-                <div className="flex-between" style={{ color: '#10b981' }}><span>Diskon</span><input type="number" style={{ width: '80px', textAlign: 'right', border: '1px solid #ddd', borderRadius: '4px' }} value={discount} onChange={(e) => setDiscount(Number(e.target.value))} /></div>
-                <div style={{ borderTop: '1px dashed #d1d5db', paddingTop: '1rem' }}>
-                  <div className="flex-between" style={{ fontSize: '1.25rem', fontWeight: 800 }}><span>TOTAL</span><span className="text-primary">{formatPrice(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0) - discount)}</span></div>
-                </div>
-                {paymentMethod === 'Tunai' && <div style={{ borderTop: '1px dashed #d1d5db', paddingTop: '1rem' }}><div className="flex-between" style={{ fontSize: '1.25rem', fontWeight: 800, color: '#3b82f6' }}><span>Kembali</span><span>{formatPrice(Math.max(0, Number(paymentAmount) - (cart.reduce((sum, i) => sum + (i.price * i.quantity), 0) - discount)))}</span></div></div>}
+                <button className="btn btn-primary" style={{ width: '100%', padding: '1.25rem', marginTop: '2rem', fontSize: '1.1rem' }} onClick={finalizeTransaction}>KONFIRMASI (F2)</button>
               </div>
-              <button className="btn btn-primary" style={{ width: '100%', padding: '1.25rem', marginTop: '2rem', fontSize: '1.1rem' }} onClick={finalizeTransaction}>KONFIRMASI (F2)</button>
             </div>
           </div>
         </div>
