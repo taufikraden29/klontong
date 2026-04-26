@@ -1,57 +1,67 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #8b0000;
-  --color-primary-light: #ff4d4d;
-  --color-primary-dark: #660000;
-  --color-secondary: #0f172a;
-  --color-accent: #fbbf24;
-  --font-outfit: "Outfit", sans-serif;
+  /* Minimalist Palette */
+  --color-primary: #B91C1C; /* Professional Red */
+  --color-primary-soft: #FEE2E2;
+  
+  --color-neutral-50: #F9FAFB;
+  --color-neutral-100: #F3F4F6;
+  --color-neutral-200: #E5E7EB;
+  --color-neutral-800: #1F2937;
+  --color-neutral-900: #111827;
+
+  /* Typography */
+  --font-inter: "Inter", sans-serif;
+  
+  /* Simple Animations */
+  --animate-fade-in: fade-in 0.3s ease-out;
+  
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }
 
 @layer base {
   body {
-    @apply bg-slate-100 text-slate-900 antialiased font-sans;
+    @apply bg-white text-neutral-800 antialiased font-inter selection:bg-primary-soft selection:text-primary;
   }
+  
   h1, h2, h3, h4 {
-    @apply font-outfit font-extrabold tracking-tight;
+    @apply font-bold tracking-tight text-neutral-900;
   }
 }
 
 @layer components {
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-bold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  /* Minimalist Card */
+  .card-minimal {
+    @apply bg-white rounded-xl border border-neutral-200 p-6 transition-all hover:border-primary/30;
   }
+  
+  /* Clean Input */
+  .input-minimal {
+    @apply w-full rounded-lg bg-neutral-50 border border-neutral-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10;
+  }
+
+  /* Primary Button */
   .btn-primary {
-    @apply bg-primary text-white hover:bg-primary-dark shadow-lg shadow-primary/30;
+    @apply inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-800 active:scale-95;
   }
-  .btn-outline {
-    @apply border border-slate-200 bg-white hover:bg-slate-50 text-slate-700;
+
+  /* Secondary Button */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg bg-neutral-100 px-5 py-2.5 text-sm font-semibold text-neutral-600 transition-all hover:bg-neutral-200 active:scale-95;
   }
-  .card {
-    @apply bg-white rounded-2xl p-5 border border-slate-200 shadow-sm transition-all duration-300 hover:shadow-xl;
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
   }
-}
-
-/* Custom Utilities for POS */
-.pos-categories::-webkit-scrollbar {
-  display: none;
-}
-
-@keyframes slide-up {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media print {
-  .no-print {
-    display: none !important;
-  }
+  .no-print { display: none !important; }
   #receipt-content {
-    @apply !p-0 !border-none !shadow-none w-[80mm];
+    @apply !p-0 !m-0 w-full text-black font-mono;
   }
 }
