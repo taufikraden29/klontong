@@ -32,7 +32,11 @@ import {
   PieChart,
   ClipboardList,
   UserPlus,
-  Menu
+  Menu,
+  Settings as SettingsIcon,
+  Upload,
+  Database,
+  RefreshCw
 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -302,6 +306,53 @@ export default function App() {
     setDebts(prev => prev.map(item => item.id === id ? { ...item, status: 'Lunas' } : item));
     notify(`Hutang ${name} telah lunas!`, 'success');
   };
+  
+  // MAXIMIZE: Backup & Restore
+  const exportAllData = () => {
+    const data = {
+      products,
+      transactions,
+      debts,
+      exportDate: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `backup_klontong_${new Date().toLocaleDateString()}.json`;
+    link.click();
+    notify('Backup berhasil didownload!');
+  };
+
+  const importAllData = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (data.products) setProducts(data.products);
+        if (data.transactions) setTransactions(data.transactions);
+        if (data.debts) setDebts(data.debts);
+        notify('Data berhasil dipulihkan!', 'success');
+      } catch (err) {
+        notify('Format file backup tidak valid!', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // MAXIMIZE: Quick Stock Update
+  const updateStockQuickly = (id, amount) => {
+    setProducts(prev => prev.map(p => {
+      if (p.id === id) {
+        const newStock = Math.max(0, p.stock + amount);
+        notify(`${p.name}: ${newStock} ${p.unit}`);
+        return { ...p, stock: newStock };
+      }
+      return p;
+    }));
+  };
 
   const addDebt = (e) => {
     e.preventDefault();
@@ -417,6 +468,9 @@ export default function App() {
           </div>
           <div className={`nav-link ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => { setActiveTab('transactions'); setIsSidebarOpen(false); }}>
             <History size={20} /> <span>Laporan</span>
+          </div>
+          <div className={`nav-link ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}>
+            <SettingsIcon size={20} /> <span>Pengaturan</span>
           </div>
         </div>
         <div style={{ marginTop: 'auto', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
@@ -626,7 +680,13 @@ export default function App() {
                       <td><span style={{ padding: '2px 8px', background: '#f3f4f6', borderRadius: '4px', fontSize: '0.7rem' }}>{p.category}</span></td>
                       <td>{formatPrice(p.costPrice)}</td>
                       <td style={{ fontWeight: 700 }}>{formatPrice(p.price)}</td>
-                      <td><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: p.stock <= 0 ? '#ef4444' : p.stock <= 10 ? '#f59e0b' : '#10b981' }}></span>{p.stock} {p.unit}</div></td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <button className="btn btn-outline" style={{ padding: '2px 8px', minWidth: '30px' }} onClick={() => updateStockQuickly(p.id, -1)}>-</button>
+                          <span style={{ fontWeight: 600, minWidth: '40px', textAlign: 'center' }}>{p.stock}</span>
+                          <button className="btn btn-outline" style={{ padding: '2px 8px', minWidth: '30px' }} onClick={() => updateStockQuickly(p.id, 1)}>+</button>
+                        </div>
+                      </td>
                       <td style={{ textAlign: 'right' }}><button className="btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => { setEditingProduct(p); setShowProductModal(true); }}><Edit2 size={16} /></button></td>
                     </tr>
                   ))}
@@ -671,6 +731,38 @@ export default function App() {
                 <thead><tr><th>ID</th><th>Waktu</th><th>Pelanggan</th><th>Omzet</th><th>Profit</th><th>Metode</th></tr></thead>
                 <tbody>{transactions.map(t => (<tr key={t.id}><td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{t.id}</td><td>{t.date}</td><td style={{fontWeight: 600}}>{t.customerName}</td><td style={{ fontWeight: 700 }}>{formatPrice(t.total)}</td><td style={{ color: '#10b981' }}>+{formatPrice(t.profit)}</td><td><span style={{padding: '2px 6px', background: '#f3f4f6', borderRadius: '4px', fontSize: '0.75rem'}}>{t.paymentMethod}</span></td></tr>))}</tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="animate-fade-in">
+            <h1 style={{fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem'}}>Pengaturan Sistem</h1>
+            <div className="responsive-grid grid-2-1">
+              <div className="card">
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Database size={20} /> Manajemen Data</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Ekspor semua data Anda (Produk, Transaksi, Hutang) ke file JSON untuk cadangan atau pindah perangkat.</p>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" onClick={exportAllData}><Download size={18} /> Backup Semua Data</button>
+                  <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+                    <Upload size={18} /> Restore Data
+                    <input type="file" hidden accept=".json" onChange={importAllData} />
+                  </label>
+                </div>
+              </div>
+              <div className="card">
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.5rem' }}>Info Toko</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>Nama Toko</label>
+                    <input className="card" style={{ width: '100%', padding: '0.7rem' }} defaultValue="TOKO MADURA" />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>Alamat</label>
+                    <textarea className="card" style={{ width: '100%', padding: '0.7rem', height: '80px' }} defaultValue="Jl. Raya Pasar No. 123, Jawa Timur" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
