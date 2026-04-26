@@ -90,6 +90,8 @@ export default function App() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [lastReceipt, setLastReceipt] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [scannerMode, setScannerMode] = useState('pos'); // 'pos' or 'product'
+  const [scannedBarcode, setScannedBarcode] = useState('');
   
   const barcodeBuffer = useRef('');
   const lastKeyTime = useRef(0);
@@ -115,6 +117,31 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [products, cart]);
 
+  // Camera Scanner Logic
+  useEffect(() => {
+    let scanner = null;
+    if (showScannerModal) {
+      scanner = new Html5QrcodeScanner('reader', { 
+        fps: 10, 
+        qrbox: { width: 250, height: 250 },
+        rememberLastUsedCamera: true,
+        aspectRatio: 1.0
+      });
+      scanner.render((decodedText) => {
+        handleBarcodeScanned(decodedText);
+        scanner.clear();
+        setShowScannerModal(false);
+      }, (error) => {
+        // console.warn(error);
+      });
+    }
+    return () => {
+      if (scanner) {
+        scanner.clear().catch(err => console.error("Failed to clear scanner", err));
+      }
+    };
+  }, [showScannerModal]);
+
   // Actions
   const notify = (message, type = 'success') => {
     const id = Date.now();
@@ -123,6 +150,12 @@ export default function App() {
   };
 
   const handleBarcodeScanned = (code) => {
+    if (scannerMode === 'product') {
+      setScannedBarcode(code);
+      notify(`Barcode terdeteksi: ${code}`);
+      return;
+    }
+
     const product = products.find(p => p.barcode === code);
     if (product) {
       addToCart(product);
@@ -477,7 +510,7 @@ export default function App() {
               <div className="flex-between mb-4" style={{ flexWrap: 'wrap', gap: '1rem' }}>
                 <h1 style={{fontSize: '1.5rem', fontWeight: 800}}>Kasir Utama</h1>
                 <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '300px' }}>
-                  <button className="btn btn-outline" onClick={() => setShowScannerModal(true)}><ScanLine size={20} /></button>
+                  <button className="btn btn-outline" onClick={() => { setScannerMode('pos'); setShowScannerModal(true); }}><ScanLine size={20} /></button>
                   <div style={{ position: 'relative', flex: 1 }}>
                     <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
                     <input type="text" placeholder="Cari barang atau barcode..." className="card" style={{ width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.5rem', borderRadius: '10px' }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -710,18 +743,26 @@ export default function App() {
 
       {showProductModal && (
         <div className="modal-overlay">
-          <form className="modal animate-fade-in" style={{ maxWidth: '600px' }} onSubmit={saveProduct}>
-            <div className="flex-between mb-6"><h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{editingProduct ? 'Edit Produk' : 'Tambah Produk'}</h2><button type="button" onClick={() => setShowProductModal(false)} style={{ background: 'none', border: 'none' }}><X /></button></div>
+          <form className="modal animate-fade-in" style={{ maxWidth: '600px' }} onSubmit={(e) => { saveProduct(e); setScannedBarcode(''); }}>
+            <div className="flex-between mb-6"><h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{editingProduct ? 'Edit Produk' : 'Tambah Produk'}</h2><button type="button" onClick={() => { setShowProductModal(false); setScannedBarcode(''); }} style={{ background: 'none', border: 'none' }}><X /></button></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div style={{ gridColumn: 'span 2' }}><input name="name" placeholder="Nama Produk" required defaultValue={editingProduct?.name} className="card" style={{ width: '100%', padding: '0.7rem' }} /></div>
-              <input name="barcode" placeholder="Barcode" defaultValue={editingProduct?.barcode} className="card" style={{ width: '100%', padding: '0.7rem' }} />
-              <select name="category" defaultValue={editingProduct?.category || 'Pokok'} className="card" style={{ width: '100%', padding: '0.7rem', background: 'white' }}>{CATEGORIES.slice(1).map(cat => <option key={cat} value={cat}>{cat}</option>)}</select>
-              <input name="costPrice" type="number" placeholder="Harga Modal" required defaultValue={editingProduct?.costPrice} className="card" style={{ width: '100%', padding: '0.7rem' }} />
-              <input name="price" type="number" placeholder="Harga Jual" required defaultValue={editingProduct?.price} className="card" style={{ width: '100%', padding: '0.7rem' }} />
-              <input name="stock" type="number" placeholder="Stok" required defaultValue={editingProduct?.stock} className="card" style={{ width: '100%', padding: '0.7rem' }} />
-              <select name="unit" defaultValue={editingProduct?.unit || 'Pcs'} className="card" style={{ width: '100%', padding: '0.7rem', background: 'white' }}>{UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select>
+              <div style={{ gridColumn: 'span 2' }}><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>Nama Produk</label><input name="name" placeholder="Contoh: Beras Madura" required defaultValue={editingProduct?.name} className="card" style={{ width: '100%', padding: '0.7rem' }} /></div>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>Barcode</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input name="barcode" placeholder="Scan atau ketik..." value={scannedBarcode || editingProduct?.barcode || ''} onChange={(e) => setScannedBarcode(e.target.value)} className="card" style={{ width: '100%', padding: '0.7rem' }} />
+                  <button type="button" className="btn btn-outline" style={{ padding: '0.7rem' }} onClick={() => { setScannerMode('product'); setShowScannerModal(true); }}><ScanLine size={20} /></button>
+                </div>
+              </div>
+
+              <div><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>Kategori</label><select name="category" defaultValue={editingProduct?.category || 'Pokok'} className="card" style={{ width: '100%', padding: '0.7rem', background: 'white' }}>{CATEGORIES.slice(1).map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></div>
+              <div><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>Harga Modal</label><input name="costPrice" type="number" placeholder="Rp" required defaultValue={editingProduct?.costPrice} className="card" style={{ width: '100%', padding: '0.7rem' }} /></div>
+              <div><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>Harga Jual</label><input name="price" type="number" placeholder="Rp" required defaultValue={editingProduct?.price} className="card" style={{ width: '100%', padding: '0.7rem' }} /></div>
+              <div><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>Stok Awal</label><input name="stock" type="number" placeholder="0" required defaultValue={editingProduct?.stock} className="card" style={{ width: '100%', padding: '0.7rem' }} /></div>
+              <div><label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>Satuan</label><select name="unit" defaultValue={editingProduct?.unit || 'Pcs'} className="card" style={{ width: '100%', padding: '0.7rem', background: 'white' }}>{UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
             </div>
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }}>Simpan</button>
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }}>Simpan Produk</button>
           </form>
         </div>
       )}
