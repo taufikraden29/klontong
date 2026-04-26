@@ -93,10 +93,12 @@ export default function App() {
   const [showDebtModal, setShowDebtModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [lastReceipt, setLastReceipt] = useState(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [scannerMode, setScannerMode] = useState('pos'); // 'pos', 'product', or 'search'
+  const [scannerMode, setScannerMode] = useState('pos'); // 'pos', 'product', 'search', or 'restock'
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [searchTarget, setSearchTarget] = useState('pos'); // 'pos' or 'inventory'
+  const [restockCart, setRestockCart] = useState([]);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [showMobileCart, setShowMobileCart] = useState(false);
   
   const barcodeBuffer = useRef('');
   const lastKeyTime = useRef(0);
@@ -176,6 +178,13 @@ export default function App() {
       if (searchTarget === 'pos') setSearchTerm(code);
       else setInventorySearch(code);
       notify(`Mencari barcode: ${code}`);
+      return;
+    }
+
+    if (scannerMode === 'restock') {
+      const product = products.find(p => p.barcode === code);
+      if (product) addToRestock(product);
+      else notify(`Produk tidak ditemukan!`, 'error');
       return;
     }
 
@@ -362,6 +371,33 @@ export default function App() {
     }));
   };
 
+  const addToRestock = (product) => {
+    setRestockCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) return prev;
+      return [...prev, { ...product, addedQty: 0, newCostPrice: product.costPrice }];
+    });
+    notify(`Ditambahkan ke daftar restok: ${product.name}`);
+  };
+
+  const finalizeRestock = () => {
+    if (restockCart.length === 0) return;
+    setProducts(prev => prev.map(p => {
+      const restockItem = restockCart.find(item => item.id === p.id);
+      if (restockItem) {
+        return { 
+          ...p, 
+          stock: p.stock + Number(restockItem.addedQty), 
+          costPrice: Number(restockItem.newCostPrice) 
+        };
+      }
+      return p;
+    }));
+    setRestockCart([]);
+    setShowRestockModal(false);
+    notify('Stok berhasil diperbarui!', 'success');
+  };
+
   const addDebt = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -441,58 +477,68 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Mobile Header */}
-      <div className="mobile-header">
-        <div className="logo" style={{ marginBottom: 0 }}>
-          <div className="logo-icon"><Store size={20} color="white" /></div>
-          <span className="logo-text" style={{ fontSize: '1rem' }}>KLO<span style={{color: 'var(--primary-light)'}}>NTONG</span></span>
-        </div>
-        <button className="btn btn-outline" style={{ padding: '0.5rem', background: 'transparent', border: 'none', color: 'white' }} onClick={() => setIsSidebarOpen(true)}>
-          <Menu size={24} />
-        </button>
-      </div>
-
-      {/* Sidebar Overlay */}
-      <div className={`sidebar-overlay ${isSidebarOpen ? 'show' : ''}`} onClick={() => setIsSidebarOpen(false)}></div>
-
-      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+      {/* DESKTOP SIDEBAR */}
+      <aside className="sidebar">
         <div className="logo">
           <div className="logo-icon"><Store size={24} color="white" /></div>
           <span className="logo-text">KLO<span style={{color: 'var(--primary-light)'}}>NTONG</span></span>
-          <button className="mobile-only" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'white', display: 'none' }} onClick={() => setIsSidebarOpen(false)}><X size={24}/></button>
         </div>
-        <div className="nav-links">
-          <div className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}>
+        <nav className="nav-links">
+          <div className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
             <LineChart size={20} /> <span>Dashboard</span>
           </div>
-          <div className={`nav-link ${activeTab === 'pos' ? 'active' : ''}`} onClick={() => { setActiveTab('pos'); setIsSidebarOpen(false); }}>
+          <div className={`nav-link ${activeTab === 'pos' ? 'active' : ''}`} onClick={() => setActiveTab('pos')}>
             <ShoppingCart size={20} /> <span>Kasir (POS)</span>
           </div>
-          <div className={`nav-link ${activeTab === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveTab('inventory'); setIsSidebarOpen(false); }}>
+          <div className={`nav-link ${activeTab === 'inventory' ? 'active' : ''}`} onClick={() => setActiveTab('inventory')}>
             <Package size={20} /> <span>Inventori</span>
           </div>
-          <div className={`nav-link ${activeTab === 'debts' ? 'active' : ''}`} onClick={() => { setActiveTab('debts'); setIsSidebarOpen(false); }}>
+          <div className={`nav-link ${activeTab === 'debts' ? 'active' : ''}`} onClick={() => setActiveTab('debts')}>
             <Users size={20} /> <span>Kas Bon</span>
           </div>
-          <div className={`nav-link ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => { setActiveTab('transactions'); setIsSidebarOpen(false); }}>
+          <div className={`nav-link ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>
             <History size={20} /> <span>Laporan</span>
           </div>
-          <div className={`nav-link ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}>
+          <div className={`nav-link ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
             <SettingsIcon size={20} /> <span>Pengaturan</span>
           </div>
-        </div>
+        </nav>
         <div style={{ marginTop: 'auto', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
           <div style={{ color: '#9ca3af', fontSize: '0.75rem', marginBottom: '0.5rem' }}>Kas Hari Ini</div>
-          <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{formatPrice(todayRevenue)}</div>
+          <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'white' }}>{formatPrice(todayRevenue)}</div>
         </div>
-      </div>
+      </aside>
+
+      {/* MOBILE BOTTOM NAV */}
+      <nav className="mobile-nav">
+        <div className={`mobile-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+          <LineChart /> <span>Beranda</span>
+        </div>
+        <div className={`mobile-nav-item ${activeTab === 'pos' ? 'active' : ''}`} onClick={() => setActiveTab('pos')}>
+          <ShoppingCart /> <span>Kasir</span>
+        </div>
+        <div className={`mobile-nav-item ${activeTab === 'inventory' ? 'active' : ''}`} onClick={() => setActiveTab('inventory')}>
+          <Package /> <span>Stok</span>
+        </div>
+        <div className={`mobile-nav-item ${activeTab === 'debts' ? 'active' : ''}`} onClick={() => setActiveTab('debts')}>
+          <Users /> <span>Bon</span>
+        </div>
+        <div className={`mobile-nav-item ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>
+          <History /> <span>Data</span>
+        </div>
+      </nav>
       
       <main className="main-content">
         {activeTab === 'dashboard' && (
-          <div className="animate-fade-in">
-            <h1 style={{fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem'}}>Ringkasan Toko</h1>
+          <div className="animate-in">
+            <div className="flex-between mb-6">
+              <h1 style={{fontSize: '1.75rem'}}>Ringkasan Toko</h1>
+              <div style={{ padding: '0.5rem 1rem', background: 'white', borderRadius: '100px', fontSize: '0.8rem', fontWeight: 700, border: '1px solid var(--border)' }}>
+                {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </div>
+            </div>
             
-            <div className="responsive-grid grid-3 mb-4">
+            <div className="stats-grid mb-6">
               <div className="card" style={{ background: 'var(--primary)', color: 'white' }}>
                 <div style={{ opacity: 0.8, fontSize: '0.8rem' }}>Laba Bersih Hari Ini</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '0.5rem' }}>{formatPrice(todayProfit)}</div>
@@ -588,10 +634,10 @@ export default function App() {
         )}
 
         {activeTab === 'pos' && (
-          <div className="pos-layout animate-fade-in">
+          <div className="pos-layout animate-in">
             <section>
               <div className="flex-between mb-4" style={{ flexWrap: 'wrap', gap: '1rem' }}>
-                <h1 style={{fontSize: '1.5rem', fontWeight: 800}}>Kasir Utama</h1>
+                <h1 style={{fontSize: '1.75rem'}}>Kasir</h1>
                 <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '300px' }}>
                   <button className="btn btn-outline" title="Scan Tambah Barang" onClick={() => { setScannerMode('pos'); setShowScannerModal(true); }}><ScanLine size={20} /></button>
                   <div style={{ position: 'relative', flex: 1 }}>
@@ -609,17 +655,15 @@ export default function App() {
                 </div>
               </div>
 
-              {/* POS Category Filter */}
-              <div className="pos-categories mb-4" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+              <div className="pos-categories mb-6">
                 {CATEGORIES.map(cat => (
-                  <button 
+                  <div 
                     key={cat} 
-                    className={`btn ${selectedCategory === cat ? 'btn-primary' : 'btn-outline'}`}
-                    style={{ whiteSpace: 'nowrap', padding: '0.5rem 1.25rem', borderRadius: '30px', fontSize: '0.85rem' }}
+                    className={`category-chip ${selectedCategory === cat ? 'active' : ''}`}
                     onClick={() => setSelectedCategory(cat)}
                   >
                     {cat}
-                  </button>
+                  </div>
                 ))}
               </div>
 
@@ -628,56 +672,73 @@ export default function App() {
                   .filter(p => (selectedCategory === 'Semua' || p.category === selectedCategory))
                   .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || (p.barcode && p.barcode.includes(searchTerm)))
                   .map(product => (
-                  <div key={product.id} className="card product-card" onClick={() => addToCart(product)} style={{ opacity: product.stock <= 0 ? 0.5 : 1 }}>
-                    <div className="product-image"><Package size={32} strokeWidth={1.5} /></div>
+                  <div key={product.id} className="card" onClick={() => addToCart(product)} style={{ padding: '0.75rem', opacity: product.stock <= 0 ? 0.5 : 1 }}>
+                    <div className="product-image" style={{ marginBottom: '0.75rem' }}><Package size={28} strokeWidth={1.5} /></div>
                     <div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, textTransform: 'uppercase' }}>{product.category}</div>
-                      <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{product.name}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 700, textTransform: 'uppercase' }}>{product.category}</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.25rem', height: '2.4em', overflow: 'hidden' }}>{product.name}</div>
                       <div className="flex-between">
-                        <span className="text-bold">{formatPrice(product.price)}</span>
-                        <span style={{ fontSize: '0.8rem', color: product.stock <= 5 ? 'var(--primary)' : 'var(--text-muted)' }}>{product.stock} {product.unit}</span>
+                        <span style={{ fontWeight: 800, color: 'var(--secondary)' }}>{formatPrice(product.price)}</span>
+                        <span style={{ fontSize: '0.75rem', color: product.stock <= 5 ? 'var(--primary)' : 'var(--text-muted)' }}>{product.stock} {product.unit}</span>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             </section>
-            <aside>
-              <div className="card cart-panel">
-                <div className="flex-between"><h2 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ShoppingCart size={20} /> Keranjang</h2><button onClick={() => setCart([])} style={{ color: '#6b7280', background: 'none', border: 'none' }}><Eraser size={18}/></button></div>
-                <div className="cart-items">
-                  {cart.length === 0 ? <div style={{ textAlign: 'center', color: '#9ca3af', marginTop: '2rem' }}><ShoppingCart size={48} style={{ opacity: 0.2 }} /><p>Kosong</p></div> : 
-                    cart.map(item => (
-                      <div key={item.id} className="cart-item">
-                        <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</div><div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{formatPrice(item.price)}</div></div>
-                        <div className="flex-between" style={{ gap: '0.5rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', background: '#f3f4f6', borderRadius: '6px' }}>
-                            <button onClick={() => updateCartQuantity(item.id, -1)} style={{ border: 'none', background: 'none', padding: '4px 8px' }}>-</button>
-                            <span style={{ fontWeight: 600 }}>{item.quantity}</span>
-                            <button onClick={() => updateCartQuantity(item.id, 1)} style={{ border: 'none', background: 'none', padding: '4px 8px' }}>+</button>
-                          </div>
-                          <button onClick={() => setCart(prev => prev.filter(i => i.id !== item.id))} style={{ color: '#ef4444', background: 'none', border: 'none' }}><Trash2 size={16} /></button>
+
+            <aside className="cart-panel card">
+              <div className="flex-between mb-4"><h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ShoppingCart size={22} /> Keranjang</h2><button onClick={() => setCart([])} style={{ color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}><Eraser size={18}/></button></div>
+              <div className="cart-items">
+                {cart.length === 0 ? <div style={{ textAlign: 'center', color: '#9ca3af', marginTop: '4rem' }}><ShoppingCart size={48} style={{ opacity: 0.1, marginBottom: '1rem' }} /><p style={{fontWeight: 600}}>Belum ada belanjaan</p></div> : 
+                  cart.map(item => (
+                    <div key={item.id} className="cart-item">
+                      <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{item.name}</div><div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{formatPrice(item.price)}</div></div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', borderRadius: '8px', padding: '2px' }}>
+                          <button className="btn-outline" onClick={() => updateCartQuantity(item.id, -1)} style={{ padding: '2px 8px', border: 'none', borderRadius: '6px' }}>-</button>
+                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 700, fontSize: '0.85rem' }}>{item.quantity}</span>
+                          <button className="btn-outline" onClick={() => updateCartQuantity(item.id, 1)} style={{ padding: '2px 8px', border: 'none', borderRadius: '6px' }}>+</button>
                         </div>
+                        <button onClick={() => setCart(prev => prev.filter(i => i.id !== item.id))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={16} /></button>
                       </div>
-                    ))
-                  }
+                    </div>
+                  ))
+                }
+              </div>
+              <div className="cart-total">
+                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', marginBottom: '1rem' }}>
+                  <div className="flex-between mb-2" style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}><span>Subtotal</span><span>{formatPrice(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0))}</span></div>
+                  <div className="flex-between" style={{ fontSize: '0.9rem', color: '#10b981', fontWeight: 600 }}><span>Diskon</span><span>-{formatPrice(discount)}</span></div>
                 </div>
-                <div className="cart-total">
-                  <div style={{ background: '#f9fafb', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                    <div className="flex-between" style={{ fontSize: '0.85rem', color: '#6b7280' }}><span>Subtotal</span><span>{formatPrice(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0))}</span></div>
-                    <div className="flex-between" style={{ fontSize: '0.85rem', color: '#10b981' }}><span>Diskon</span><span>-{formatPrice(discount)}</span></div>
-                  </div>
-                  <div className="flex-between" style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}><span>TOTAL</span><span className="text-primary">{formatPrice(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0) - discount)}</span></div>
-                  <button className="btn btn-primary" style={{ width: '100%', padding: '1.25rem' }} disabled={cart.length === 0} onClick={() => setShowPaymentModal(true)}>BAYAR (F2)</button>
+                <div className="flex-between mb-6">
+                  <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Total</span>
+                  <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary)' }}>{formatPrice(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0) - discount)}</span>
                 </div>
+                <button className="btn btn-primary" style={{ width: '100%', padding: '1.25rem', fontSize: '1rem' }} disabled={cart.length === 0} onClick={() => setShowPaymentModal(true)}>BAYAR SEKARANG (F2)</button>
               </div>
             </aside>
+
+            {/* Mobile Cart FAB */}
+            <div className="cart-fab" onClick={() => setShowMobileCart(true)}>
+              <div style={{ position: 'relative' }}>
+                <ShoppingCart size={24} />
+                {cart.length > 0 && <span style={{ position: 'absolute', top: '-8px', right: '-8px', background: 'var(--primary-light)', color: 'white', fontSize: '0.7rem', width: '18px', height: '18px', borderRadius: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{cart.length}</span>}
+              </div>
+              <div style={{ fontWeight: 800 }}>{formatPrice(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0) - discount)}</div>
+            </div>
           </div>
         )}
 
         {activeTab === 'inventory' && (
           <div className="animate-fade-in">
-            <div className="flex-between mb-6"><div><h1 style={{fontSize: '1.5rem', fontWeight: 800}}>Inventori Produk</h1><p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Kelola ketersediaan barang di rak</p></div><button className="btn btn-primary" onClick={() => { setEditingProduct(null); setShowProductModal(true); }}><Plus size={18} /> Tambah Produk</button></div>
+            <div className="flex-between mb-6">
+              <div><h1 style={{fontSize: '1.5rem', fontWeight: 800}}>Inventori Produk</h1><p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Kelola ketersediaan barang di rak</p></div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button className="btn btn-outline" onClick={() => { setRestockCart([]); setShowRestockModal(true); }}><RefreshCw size={18} /> Restok Barang</button>
+                <button className="btn btn-primary" onClick={() => { setEditingProduct(null); setShowProductModal(true); }}><Plus size={18} /> Tambah Produk</button>
+              </div>
+            </div>
             <div className="card mb-6" style={{ padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <div style={{ position: 'relative', flex: 2, minWidth: '200px' }}>
                 <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
@@ -945,6 +1006,96 @@ export default function App() {
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '2rem' }}>Simpan Produk</button>
           </form>
+        </div>
+      )}
+
+      {showRestockModal && (
+        <div className="modal-overlay">
+          <div className="modal modal-lg animate-fade-in">
+            <div className="flex-between mb-6">
+              <div><h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Restok Barang (Stock In)</h2><p style={{ fontSize: '0.85rem', color: '#666' }}>Tambahkan stok masuk dan perbarui harga modal jika perlu</p></div>
+              <button onClick={() => setShowRestockModal(false)} style={{ background: 'none', border: 'none' }}><X /></button>
+            </div>
+            
+            <div className="mb-6" style={{ position: 'relative' }}>
+              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+              <input 
+                type="text" 
+                placeholder="Scan barcode atau cari produk untuk direstok..." 
+                className="card" 
+                style={{ width: '100%', padding: '0.75rem 3rem 0.75rem 2.5rem' }} 
+                onChange={(e) => {
+                  const p = products.find(prod => prod.name.toLowerCase().includes(e.target.value.toLowerCase()) || (prod.barcode && prod.barcode === e.target.value));
+                  if (p && e.target.value.length > 2) { addToRestock(p); e.target.value = ''; }
+                }}
+              />
+              <button 
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--primary)' }}
+                onClick={() => { setScannerMode('restock'); setShowScannerModal(true); }}
+              >
+                <ScanLine size={20} />
+              </button>
+            </div>
+
+            <div className="data-table-container mb-6" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              <table className="data-table">
+                <thead><tr><th>Nama Produk</th><th>Stok Saat Ini</th><th>Tambah Qty</th><th>Harga Modal Baru</th><th>Aksi</th></tr></thead>
+                <tbody>
+                  {restockCart.length === 0 ? <tr><td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af' }}>Daftar restok kosong. Silakan cari/scan produk.</td></tr> : 
+                    restockCart.map(item => (
+                      <tr key={item.id}>
+                        <td data-label="Produk"><strong>{item.name}</strong></td>
+                        <td data-label="Stok">{item.stock} {item.unit}</td>
+                        <td data-label="Tambah">
+                          <input type="number" className="card" style={{ width: '80px', padding: '0.4rem' }} value={item.addedQty} onChange={(e) => setRestockCart(prev => prev.map(i => i.id === item.id ? { ...i, addedQty: e.target.value } : i))} />
+                        </td>
+                        <td data-label="Modal">
+                          <input type="number" className="card" style={{ width: '120px', padding: '0.4rem' }} value={item.newCostPrice} onChange={(e) => setRestockCart(prev => prev.map(i => i.id === item.id ? { ...i, newCostPrice: e.target.value } : i))} />
+                        </td>
+                        <td data-label="Hapus">
+                          <button onClick={() => setRestockCart(prev => prev.filter(i => i.id !== item.id))} style={{ color: '#ef4444', background: 'none', border: 'none' }}><Trash2 size={18} /></button>
+                        </td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button className="btn btn-outline" onClick={() => setShowRestockModal(false)}>Batal</button>
+              <button className="btn btn-primary" disabled={restockCart.length === 0} onClick={finalizeRestock}>Simpan Perubahan Stok</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showMobileCart && (
+        <div className="modal-overlay" style={{ alignItems: 'flex-end', padding: 0 }}>
+          <div className="modal animate-in" style={{ borderRadius: '24px 24px 0 0', padding: '1.5rem' }}>
+            <div className="flex-between mb-4">
+              <h2 style={{ fontSize: '1.25rem' }}>Keranjang Belanja</h2>
+              <button onClick={() => setShowMobileCart(false)} style={{ background: 'none', border: 'none' }}><X /></button>
+            </div>
+            <div style={{ maxHeight: '60vh', overflowY: 'auto', marginBottom: '1.5rem' }}>
+              {cart.map(item => (
+                <div key={item.id} className="cart-item" style={{ padding: '1rem 0' }}>
+                  <div style={{ flex: 1 }}><div style={{ fontWeight: 700 }}>{item.name}</div><div>{formatPrice(item.price)}</div></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', borderRadius: '8px' }}>
+                      <button className="btn-outline" onClick={() => updateCartQuantity(item.id, -1)} style={{ padding: '4px 12px', border: 'none' }}>-</button>
+                      <span style={{ width: '30px', textAlign: 'center', fontWeight: 700 }}>{item.quantity}</span>
+                      <button className="btn-outline" onClick={() => updateCartQuantity(item.id, 1)} style={{ padding: '4px 12px', border: 'none' }}>+</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', marginBottom: '1.5rem' }}>
+              <div className="flex-between mb-2"><span>Subtotal</span><span>{formatPrice(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0))}</span></div>
+              <div className="flex-between" style={{ fontWeight: 800, fontSize: '1.5rem' }}><span>TOTAL</span><span className="text-primary">{formatPrice(cart.reduce((sum, i) => sum + (i.price * i.quantity), 0) - discount)}</span></div>
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%', padding: '1.25rem' }} onClick={() => { setShowMobileCart(false); setShowPaymentModal(true); }}>PROSES PEMBAYARAN</button>
+          </div>
         </div>
       )}
     </div>
