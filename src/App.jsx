@@ -510,7 +510,11 @@ export default function App() {
              </div>
              {activeTab === 'inventory' && (
                 <div className="mb-6 flex flex-col md:flex-row gap-3">
-                   <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} /><input type="text" placeholder="Cari barang atau barcode..." className="input-minimal pl-10 py-3 text-sm" value={inventorySearch} onChange={e => setInventorySearch(e.target.value)} /></div>
+                   <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                      <input type="text" placeholder="Cari barang atau barcode..." className="input-minimal pl-10 pr-10 py-3 text-sm" value={inventorySearch} onChange={e => setInventorySearch(e.target.value)} />
+                      <button onClick={() => { setScannerMode('search'); setSearchTarget('inventory'); setShowScannerModal(true); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-primary" title="Scan Barcode"><ScanLine size={18} /></button>
+                   </div>
                    <div className="flex gap-2">
                       <select className="input-minimal flex-1 md:w-auto py-2 text-[10px] md:text-xs font-bold" value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}><option value="Semua">Kategori</option>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>
                       <select className="input-minimal flex-1 md:w-auto py-2 text-[10px] md:text-xs font-bold" value={inventoryFilter} onChange={e => setInventoryFilter(e.target.value)}><option value="semua">Status</option><option value="rendah">Stok Rendah</option><option value="habis">Habis</option></select>
@@ -571,31 +575,245 @@ export default function App() {
 
       {/* --- MODALS --- */}
       {showMobileCart && (
-        <div className="fixed inset-0 z-[100] flex items-end bg-neutral-900/60 backdrop-blur-sm animate-fade-in lg:hidden"><div className="w-full bg-white rounded-t-[2rem] p-6 animate-fade-in-up max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"><div className="h-1.5 w-12 bg-neutral-200 rounded-full mx-auto mb-6 shrink-0"></div><div className="flex items-center justify-between mb-6 shrink-0"><h2 className="text-lg font-bold flex items-center gap-2"><ShoppingCart size={20} /> Detail Pesanan</h2><button onClick={() => setShowMobileCart(false)} className="p-2 rounded-full bg-neutral-100 text-neutral-400 active:scale-90"><X size={20} /></button></div><div className="flex-1 overflow-y-auto mb-6 space-y-4 pr-1">{cart.length === 0 ? (<div className="text-center py-10 text-neutral-300 italic uppercase text-[10px] font-bold">Belum ada barang dipilih</div>) : cart.map(item => (<div key={item.id} className="flex flex-col gap-3 p-4 bg-neutral-50 rounded-2xl border border-neutral-100 transition-all"><div className="flex justify-between items-start gap-3"><div className="flex-1 min-w-0"><div className="font-bold text-xs md:text-sm text-neutral-800 uppercase truncate">{item.name}</div><div className="text-[10px] text-neutral-400 font-bold tracking-wider">{formatPrice(item.price)}</div></div><button onClick={() => setCart(prev => prev.filter(i => i.id !== item.id))} className="text-neutral-300 p-1"><Trash2 size={16} /></button></div><div className="flex items-center justify-between mt-1"><div className="flex items-center rounded-xl bg-white border border-neutral-200 p-1"><button onClick={() => updateCartQuantity(item.id, item.quantity - 1)} className="h-9 w-9 rounded-lg flex items-center justify-center active:bg-neutral-100"><Minus size={14} /></button><span className="w-10 text-center font-bold text-sm">{item.quantity}</span><button onClick={() => updateCartQuantity(item.id, item.quantity + 1)} className="h-9 w-9 rounded-lg flex items-center justify-center active:bg-neutral-100"><Plus size={14} /></button></div><div className="text-sm font-bold text-neutral-800">{formatPrice(item.price * item.quantity)}</div></div></div>))}</div><div className="bg-neutral-900 p-6 rounded-[1.5rem] text-white shrink-0 shadow-xl"><div className="flex items-center justify-between mb-4"><div className="flex flex-col"><span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Total Tagihan</span><span className="text-2xl font-bold">{formatPrice(cartTotal)}</span></div><div className="flex items-center gap-2"><span className="text-[9px] font-bold text-neutral-500 uppercase">Items: {cart.length}</span></div></div><button onClick={() => { setShowMobileCart(false); setShowPaymentModal(true); }} className="btn-primary w-full h-14 font-bold text-sm tracking-widest active:scale-95">PROSES BAYAR SEKARANG</button></div></div></div>
+        <div className="fixed inset-0 z-[100] flex items-end bg-neutral-900/60 backdrop-blur-sm animate-fade-in lg:hidden">
+          <div className="w-full bg-white rounded-t-[2rem] p-6 animate-fade-in-up max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative">
+            <button onClick={() => setShowMobileCart(false)} className="absolute top-6 right-6 p-2 rounded-full bg-neutral-100 text-neutral-400 active:scale-90 z-20"><X size={20} /></button>
+            <div className="h-1.5 w-12 bg-neutral-200 rounded-full mx-auto mb-6 shrink-0"></div>
+            <div className="flex items-center justify-between mb-6 shrink-0">
+              <h2 className="text-lg font-bold flex items-center gap-2"><ShoppingCart size={20} /> Detail Pesanan</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto mb-6 space-y-4 pr-1">
+              {cart.length === 0 ? (
+                <div className="text-center py-10 text-neutral-300 italic uppercase text-[10px] font-bold">Belum ada barang dipilih</div>
+              ) : cart.map(item => (
+                <div key={item.id} className="flex flex-col gap-3 p-4 bg-neutral-50 rounded-2xl border border-neutral-100 transition-all">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-xs md:text-sm text-neutral-800 uppercase truncate">{item.name}</div>
+                      <div className="text-[10px] text-neutral-400 font-bold tracking-wider">{formatPrice(item.price)}</div>
+                    </div>
+                    <button onClick={() => setCart(prev => prev.filter(i => i.id !== item.id))} className="text-neutral-300 p-1"><Trash2 size={16} /></button>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center rounded-xl bg-white border border-neutral-200 p-1">
+                      <button onClick={() => updateCartQuantity(item.id, item.quantity - 1)} className="h-9 w-9 rounded-lg flex items-center justify-center active:bg-neutral-100"><Minus size={14} /></button>
+                      <span className="w-10 text-center font-bold text-sm">{item.quantity}</span>
+                      <button onClick={() => updateCartQuantity(item.id, item.quantity + 1)} className="h-9 w-9 rounded-lg flex items-center justify-center active:bg-neutral-100"><Plus size={14} /></button>
+                    </div>
+                    <div className="text-sm font-bold text-neutral-800">{formatPrice(item.price * item.quantity)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="bg-neutral-900 p-6 rounded-[1.5rem] text-white shrink-0 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Total Tagihan</span>
+                  <span className="text-2xl font-bold">{formatPrice(cartTotal)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-bold text-neutral-500 uppercase">Items: {cart.length}</span>
+                </div>
+              </div>
+              <button onClick={() => { setShowMobileCart(false); setShowPaymentModal(true); }} className="btn-primary w-full h-14 font-bold text-sm tracking-widest active:scale-95">PROSES BAYAR SEKARANG</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showPaymentModal && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 bg-neutral-900/60 backdrop-blur-sm animate-fade-in"><div className="card-minimal w-full max-w-lg !p-6 md:!p-8 relative bg-white shadow-2xl rounded-t-[2rem] md:rounded-[2rem] h-[90vh] md:h-auto overflow-y-auto"><button onClick={() => setShowPaymentModal(false)} className="absolute top-6 right-6 text-neutral-300 hover:text-neutral-600 hidden md:block"><X size={20} /></button><div className="md:hidden h-1.5 w-12 bg-neutral-200 rounded-full mx-auto mb-6"></div><h2 className="text-xl font-bold mb-6 text-center md:text-left">Selesaikan Pembayaran</h2><div className="grid grid-cols-1 gap-6 md:gap-8"><div className="space-y-6"><div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-3 tracking-wider">Metode Pembayaran</label><div className="grid grid-cols-2 md:grid-cols-1 gap-2">{[{ id: 'Tunai', icon: Banknote }, { id: 'QRIS/Transfer', icon: QrCode }, { id: 'Hutang', icon: Users }].map(m => (<button key={m.id} onClick={() => setPaymentMethod(m.id)} className={`flex items-center justify-center md:justify-start gap-3 px-4 py-3 rounded-xl text-[10px] md:text-xs font-bold transition-all border-2 ${paymentMethod === m.id ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-neutral-400 border-neutral-100 hover:border-neutral-200'}`}><m.icon size={16} />{m.id}</button>))}</div></div>{paymentMethod === 'Hutang' && (<div className="animate-fade-in"><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-2 tracking-wider">Nama Pelanggan (Hutang)</label><input type="text" className="input-minimal h-12" value={debtCustomerName} onChange={e => setDebtCustomerName(e.target.value)} placeholder="Contoh: Pak Budi" autoFocus /></div>)}</div><div className="flex flex-col"><div className="mb-6 p-6 bg-neutral-900 rounded-2xl text-white text-center md:text-left"><div className="text-[10px] text-neutral-400 uppercase font-bold tracking-widest mb-1">Total Tagihan</div><div className="text-3xl md:text-4xl font-bold">{formatPrice(cartTotal)}</div></div>{paymentMethod === 'Tunai' && (<div className="space-y-4 animate-fade-in mb-6"><div className="flex flex-wrap gap-2">{QUICK_CASH.map(amount => (<button key={amount} onClick={() => setPaymentAmount(amount)} className="flex-1 bg-neutral-100 hover:bg-neutral-200 py-2 rounded-lg text-[9px] md:text-[10px] font-bold">+{amount/1000}k</button>))}<button onClick={() => setPaymentAmount(cartTotal)} className="flex-1 bg-primary/10 text-primary py-2 rounded-lg text-[10px] font-bold">Pas</button></div><div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-2 tracking-wider">Uang yang Diterima</label><input type="number" className="input-minimal h-14 md:h-16 text-2xl md:text-3xl font-bold text-center" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0" autoFocus />{paymentAmount && Number(paymentAmount) >= cartTotal && (<div className="mt-4 text-center bg-green-50 p-3 rounded-2xl border border-green-100 animate-fade-in"><div className="text-[9px] font-bold text-green-500 uppercase tracking-widest">Uang Kembali</div><div className="text-lg md:text-xl font-bold text-green-700">{formatPrice(Number(paymentAmount) - cartTotal)}</div></div>)}</div></div>)}<button onClick={finalizeTransaction} className="btn-primary w-full h-14 md:h-16 text-sm font-bold uppercase tracking-widest active:scale-95 shadow-xl shadow-primary/20">Konfirmasi Pembayaran</button></div></div></div></div>
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 bg-neutral-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="card-minimal w-full max-w-lg !p-6 md:!p-8 relative bg-white shadow-2xl rounded-t-[2rem] md:rounded-[2rem] h-[90vh] md:h-auto overflow-y-auto">
+            <button onClick={() => setShowPaymentModal(false)} className="absolute top-6 right-6 p-2 rounded-full bg-neutral-100 text-neutral-400 active:scale-90 z-20"><X size={20} /></button>
+            <div className="md:hidden h-1.5 w-12 bg-neutral-200 rounded-full mx-auto mb-6"></div>
+            <h2 className="text-xl font-bold mb-6 text-center md:text-left uppercase tracking-tight">Selesaikan Pembayaran</h2>
+            <div className="grid grid-cols-1 gap-6 md:gap-8">
+              <div className="space-y-6">
+                <div>
+                  <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-3 tracking-wider">Metode Pembayaran</label>
+                  <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
+                    {[{ id: 'Tunai', icon: Banknote }, { id: 'QRIS/Transfer', icon: QrCode }, { id: 'Hutang', icon: Users }].map(m => (
+                      <button key={m.id} onClick={() => setPaymentMethod(m.id)} className={`flex items-center justify-center md:justify-start gap-3 px-4 py-3 rounded-xl text-[10px] md:text-xs font-bold transition-all border-2 ${paymentMethod === m.id ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-neutral-400 border-neutral-100 hover:border-neutral-200'}`}><m.icon size={16} />{m.id}</button>
+                    ))}
+                  </div>
+                </div>
+                {paymentMethod === 'Hutang' && (
+                  <div className="animate-fade-in">
+                    <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-2 tracking-wider">Nama Pelanggan (Hutang)</label>
+                    <input type="text" className="input-minimal h-12" value={debtCustomerName} onChange={e => setDebtCustomerName(e.target.value)} placeholder="Contoh: Pak Budi" autoFocus />
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col">
+                <div className="mb-6 p-6 bg-neutral-900 rounded-2xl text-white text-center md:text-left">
+                  <div className="text-[10px] text-neutral-400 uppercase font-bold tracking-widest mb-1">Total Tagihan</div>
+                  <div className="text-3xl md:text-4xl font-bold">{formatPrice(cartTotal)}</div>
+                </div>
+                {paymentMethod === 'Tunai' && (
+                  <div className="space-y-4 animate-fade-in mb-6">
+                    <div className="flex flex-wrap gap-2">
+                      {QUICK_CASH.map(amount => (<button key={amount} onClick={() => setPaymentAmount(amount)} className="flex-1 bg-neutral-100 hover:bg-neutral-200 py-2 rounded-lg text-[9px] md:text-[10px] font-bold">+{amount/1000}k</button>))}
+                      <button onClick={() => setPaymentAmount(cartTotal)} className="flex-1 bg-primary/10 text-primary py-2 rounded-lg text-[10px] font-bold">Pas</button>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-2 tracking-wider">Uang yang Diterima</label>
+                      <input type="number" className="input-minimal h-14 md:h-16 text-2xl md:text-3xl font-bold text-center" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0" autoFocus />
+                      {paymentAmount && Number(paymentAmount) >= cartTotal && (
+                        <div className="mt-4 text-center bg-green-50 p-3 rounded-2xl border border-green-100 animate-fade-in">
+                          <div className="text-[9px] font-bold text-green-500 uppercase tracking-widest">Uang Kembali</div>
+                          <div className="text-lg md:text-xl font-bold text-green-700">{formatPrice(Number(paymentAmount) - cartTotal)}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <button onClick={finalizeTransaction} className="btn-primary w-full h-14 md:h-16 text-sm font-bold uppercase tracking-widest active:scale-95 shadow-xl shadow-primary/20">Konfirmasi Pembayaran</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {showProductModal && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 bg-neutral-900/60 backdrop-blur-sm animate-fade-in"><form onSubmit={saveProduct} className="card-minimal w-full max-w-xl !p-6 md:!p-8 relative bg-white rounded-t-[2rem] md:rounded-[2rem] h-[90vh] md:h-auto overflow-y-auto"><div className="md:hidden h-1.5 w-12 bg-neutral-200 rounded-full mx-auto mb-6"></div><h2 className="text-xl font-bold mb-8 flex items-center gap-3"><div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center"><Package size={22} /></div>{editingProduct ? 'Edit Informasi Produk' : 'Tambah Produk Baru'}</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-10"><div className="md:col-span-2"><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Nama Produk</label><input name="name" defaultValue={editingProduct?.name} required className="input-minimal h-11" placeholder="Contoh: Beras Madura 5kg" /></div><div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Barcode</label><div className="relative"><input name="barcode" value={scannedBarcode || editingProduct?.barcode || ''} onChange={e => setScannedBarcode(e.target.value)} className="input-minimal pr-10 h-11" /><button type="button" onClick={() => { setScannerMode('product'); setShowScannerModal(true); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-primary"><ScanLine size={18} /></button></div></div><div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Kategori</label><select name="category" defaultValue={editingProduct?.category} className="input-minimal h-11 text-sm">{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Harga Beli</label><input name="costPrice" type="number" defaultValue={editingProduct?.costPrice} required className="input-minimal h-11" /></div><div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Harga Jual</label><input name="price" type="number" defaultValue={editingProduct?.price} required className="input-minimal h-11" /></div><div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Stok</label><input name="stock" type="number" defaultValue={editingProduct?.stock} required className="input-minimal h-11" /></div><div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Satuan</label><select name="unit" defaultValue={editingProduct?.unit} className="input-minimal h-11 text-sm">{['Pcs', 'Kg', 'Bag', 'Box', 'Liter', 'Sachet'].map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><button className="btn-primary w-full h-14 text-sm font-bold shadow-lg shadow-primary/20 uppercase tracking-widest">Simpan Data Produk</button></form></div>
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 bg-neutral-900/60 backdrop-blur-sm animate-fade-in">
+          <form onSubmit={saveProduct} className="card-minimal w-full max-w-xl !p-6 md:!p-8 relative bg-white rounded-t-[2rem] md:rounded-[2rem] h-[90vh] md:h-auto overflow-y-auto">
+            <button type="button" onClick={() => setShowProductModal(false)} className="absolute top-6 right-6 p-2 rounded-full bg-neutral-100 text-neutral-400 active:scale-90 z-20"><X size={20} /></button>
+            <div className="md:hidden h-1.5 w-12 bg-neutral-200 rounded-full mx-auto mb-6"></div>
+            <h2 className="text-xl font-bold mb-8 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center"><Package size={22} /></div>
+              {editingProduct ? 'Edit Informasi Produk' : 'Tambah Produk Baru'}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-10">
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Nama Produk</label>
+                <input name="name" defaultValue={editingProduct?.name} required className="input-minimal h-11" placeholder="Contoh: Beras Madura 5kg" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Barcode</label>
+                <div className="relative">
+                  <input name="barcode" value={scannedBarcode || editingProduct?.barcode || ''} onChange={e => setScannedBarcode(e.target.value)} className="input-minimal pr-10 h-11" />
+                  <button type="button" onClick={() => { setScannerMode('product'); setShowScannerModal(true); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-primary bg-primary/10 p-1.5 rounded-lg hover:bg-primary/20 transition-colors" title="Scan Barcode"><ScanLine size={18} /></button>
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Kategori</label>
+                <select name="category" defaultValue={editingProduct?.category} className="input-minimal h-11 text-sm">{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Harga Beli</label>
+                <input name="costPrice" type="number" defaultValue={editingProduct?.costPrice} required className="input-minimal h-11" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Harga Jual</label>
+                <input name="price" type="number" defaultValue={editingProduct?.price} required className="input-minimal h-11" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Stok</label>
+                <input name="stock" type="number" defaultValue={editingProduct?.stock} required className="input-minimal h-11" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-neutral-400 block mb-1.5 tracking-wider">Satuan</label>
+                <select name="unit" defaultValue={editingProduct?.unit} className="input-minimal h-11 text-sm">{['Pcs', 'Kg', 'Bag', 'Box', 'Liter', 'Sachet'].map(u => <option key={u} value={u}>{u}</option>)}</select>
+              </div>
+            </div>
+            <button className="btn-primary w-full h-14 text-sm font-bold shadow-lg shadow-primary/20 uppercase tracking-widest">Simpan Data Produk</button>
+          </form>
+        </div>
       )}
 
       {showRestockModal && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 bg-neutral-900/60 backdrop-blur-sm animate-fade-in"><div className="card-minimal w-full max-w-3xl !p-6 md:!p-8 relative bg-white rounded-t-[2rem] md:rounded-[2rem] h-[90vh] md:h-auto flex flex-col"><div className="md:hidden h-1.5 w-12 bg-neutral-200 rounded-full mx-auto mb-6"></div><h2 className="text-xl font-bold mb-6 flex items-center gap-3"><RefreshCw size={22} className="text-primary" /> Restok Barang</h2><div className="mb-6 relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} /><input type="text" placeholder="Cari nama barang..." className="input-minimal pl-11 h-12" onChange={e => { const p = products.find(prod => prod.name.toLowerCase().includes(e.target.value.toLowerCase()) || prod.barcode === e.target.value); if (p && e.target.value.length > 2) { addToRestock(p); e.target.value = ''; } }} /></div><div className="flex-1 overflow-y-auto mb-6 border border-neutral-100 rounded-2xl"><table className="w-full text-xs"><thead className="bg-neutral-50 sticky top-0"><tr className="text-left text-[10px] font-bold text-neutral-400 uppercase border-b border-neutral-100"><th className="px-4 py-4">Produk</th><th className="px-4 py-4 text-center">Jumlah</th><th className="px-4 py-4 text-right">Harga Beli</th><th className="w-12"></th></tr></thead><tbody className="divide-y divide-neutral-100">{restockCart.length === 0 ? (<tr><td colSpan="4" className="text-center py-12 text-neutral-300 italic">Pilih barang untuk restok</td></tr>) : restockCart.map(item => (<tr key={item.id}><td className="px-4 py-4 font-bold">{item.name}</td><td className="px-4 py-4"><input type="number" className="input-minimal py-1 text-center font-bold h-9" value={item.addedQty} onChange={e => setRestockCart(prev => prev.map(i => i.id === item.id ? { ...i, addedQty: e.target.value } : i))} /></td><td className="px-4 md:px-6 py-4"><input type="number" className="input-minimal py-1 text-right font-bold h-9" value={item.newCostPrice} onChange={e => setRestockCart(prev => prev.map(i => i.id === item.id ? { ...i, newCostPrice: e.target.value } : i))} /></td><td className="px-4 py-4 text-center"><button onClick={() => setRestockCart(prev => prev.filter(i => i.id !== item.id))} className="text-neutral-300 hover:text-red-500"><Trash2 size={16} /></button></td></tr>))}</tbody></table></div><button onClick={finalizeRestock} className="btn-primary w-full h-14 text-sm font-bold tracking-widest uppercase">Update Stok</button></div></div>
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 bg-neutral-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="card-minimal w-full max-w-3xl !p-6 md:!p-8 relative bg-white rounded-t-[2rem] md:rounded-[2rem] h-[90vh] md:h-auto flex flex-col">
+            <button onClick={() => setShowRestockModal(false)} className="absolute top-6 right-6 p-2 rounded-full bg-neutral-100 text-neutral-400 active:scale-90 z-20"><X size={20} /></button>
+            <div className="md:hidden h-1.5 w-12 bg-neutral-200 rounded-full mx-auto mb-6"></div>
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-3"><RefreshCw size={22} className="text-primary" /> Restok Barang</h2>
+            <div className="mb-6 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+              <input type="text" placeholder="Cari nama barang atau scan..." className="input-minimal pl-11 pr-12 h-12" onChange={e => { const p = products.find(prod => prod.name.toLowerCase().includes(e.target.value.toLowerCase()) || prod.barcode === e.target.value); if (p && e.target.value.length > 2) { addToRestock(p); e.target.value = ''; } }} />
+              <button onClick={() => { setScannerMode('restock'); setShowScannerModal(true); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-primary bg-primary/10 p-1.5 rounded-lg hover:bg-primary/20 transition-colors" title="Scan Barcode"><ScanLine size={20} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto mb-6 border border-neutral-100 rounded-2xl">
+              <table className="w-full text-xs">
+                <thead className="bg-neutral-50 sticky top-0">
+                  <tr className="text-left text-[10px] font-bold text-neutral-400 uppercase border-b border-neutral-100"><th className="px-4 py-4">Produk</th><th className="px-4 py-4 text-center">Jumlah</th><th className="px-4 py-4 text-right">Harga Beli</th><th className="w-12"></th></tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {restockCart.length === 0 ? (
+                    <tr><td colSpan="4" className="text-center py-12 text-neutral-300 italic">Pilih barang untuk restok</td></tr>
+                  ) : restockCart.map(item => (
+                    <tr key={item.id}>
+                      <td className="px-4 py-4 font-bold">{item.name}</td>
+                      <td className="px-4 py-4"><input type="number" className="input-minimal py-1 text-center font-bold h-9" value={item.addedQty} onChange={e => setRestockCart(prev => prev.map(i => i.id === item.id ? { ...i, addedQty: e.target.value } : i))} /></td>
+                      <td className="px-4 md:px-6 py-4"><input type="number" className="input-minimal py-1 text-right font-bold h-9" value={item.newCostPrice} onChange={e => setRestockCart(prev => prev.map(i => i.id === item.id ? { ...i, newCostPrice: e.target.value } : i))} /></td>
+                      <td className="px-4 py-4 text-center"><button onClick={() => setRestockCart(prev => prev.filter(i => i.id !== item.id))} className="text-neutral-300 hover:text-red-500"><Trash2 size={16} /></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button onClick={finalizeRestock} className="btn-primary w-full h-14 text-sm font-bold tracking-widest uppercase">Update Stok</button>
+          </div>
+        </div>
       )}
 
       {showOpnameModal && opnameTarget && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 bg-neutral-900/60 backdrop-blur-sm animate-fade-in"><form onSubmit={finalizeOpname} className="card-minimal w-full max-w-md !p-6 md:!p-8 relative bg-white rounded-t-[2rem] md:rounded-[2rem]"><div className="md:hidden h-1.5 w-12 bg-neutral-200 rounded-full mx-auto mb-6"></div><h2 className="text-lg font-bold mb-6 flex items-center gap-3"><Settings2 size={20} className="text-primary" /> Penyesuaian Stok</h2><div className="mb-6 p-4 bg-neutral-50 rounded-2xl"><div className="text-[10px] font-bold text-neutral-400 uppercase">Nama Produk</div><div className="text-sm font-bold uppercase">{opnameTarget.name}</div><div className="text-[10px] text-neutral-500 mt-1 uppercase">Stok Sistem: <span className="font-bold">{opnameTarget.stock} {opnameTarget.unit}</span></div></div><div className="space-y-4 mb-8"><div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-2 tracking-wider">Stok Sebenarnya</label><input name="newStock" type="number" required className="input-minimal h-12 text-lg font-bold" defaultValue={opnameTarget.stock} autoFocus /></div><div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-2 tracking-wider">Pilih Alasan</label><select name="reason" className="input-minimal h-12 text-sm font-bold"><option value="Opname Rutin">Opname Rutin</option><option value="Barang Rusak">Barang Rusak</option><option value="Bonus Distributor">Bonus Distributor</option></select></div></div><button className="btn-primary w-full h-14 font-bold tracking-widest active:scale-95 uppercase">SIMPAN PERUBAHAN</button></form></div>
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 bg-neutral-900/60 backdrop-blur-sm animate-fade-in">
+          <form onSubmit={finalizeOpname} className="card-minimal w-full max-w-md !p-6 md:!p-8 relative bg-white rounded-t-[2rem] md:rounded-[2rem]">
+            <button type="button" onClick={() => setShowOpnameModal(false)} className="absolute top-6 right-6 p-2 rounded-full bg-neutral-100 text-neutral-400 active:scale-90 z-20"><X size={20} /></button>
+            <div className="md:hidden h-1.5 w-12 bg-neutral-200 rounded-full mx-auto mb-6"></div>
+            <h2 className="text-lg font-bold mb-6 flex items-center gap-3"><Settings2 size={20} className="text-primary" /> Penyesuaian Stok</h2>
+            <div className="mb-6 p-4 bg-neutral-50 rounded-2xl"><div className="text-[10px] font-bold text-neutral-400 uppercase">Nama Produk</div><div className="text-sm font-bold uppercase">{opnameTarget.name}</div><div className="text-[10px] text-neutral-500 mt-1 uppercase">Stok Sistem: <span className="font-bold">{opnameTarget.stock} {opnameTarget.unit}</span></div></div>
+            <div className="space-y-4 mb-8">
+              <div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-2 tracking-wider">Stok Sebenarnya</label><input name="newStock" type="number" required className="input-minimal h-12 text-lg font-bold" defaultValue={opnameTarget.stock} autoFocus /></div>
+              <div><label className="text-[10px] font-bold uppercase text-neutral-400 block mb-2 tracking-wider">Pilih Alasan</label><select name="reason" className="input-minimal h-12 text-sm font-bold"><option value="Opname Rutin">Opname Rutin</option><option value="Barang Rusak">Barang Rusak</option><option value="Bonus Distributor">Bonus Distributor</option></select></div>
+            </div>
+            <button className="btn-primary w-full h-14 font-bold tracking-widest active:scale-95 uppercase">SIMPAN PERUBAHAN</button>
+          </form>
+        </div>
       )}
 
       {showScannerModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-neutral-900/90 backdrop-blur-md animate-fade-in"><div className="w-full max-w-sm bg-white rounded-[2rem] p-6 relative overflow-hidden"><button onClick={() => setShowScannerModal(false)} className="absolute top-4 right-4 z-10 p-2 bg-white/80 rounded-full text-neutral-400"><X size={20} /></button><h3 className="text-sm font-bold mb-4 flex items-center gap-3"><QrCode className="text-primary" size={20} /> SCANNER AKTIF</h3><div id="reader" className="overflow-hidden rounded-2xl border-4 border-neutral-50 bg-black aspect-square"></div><div className="mt-4 text-center"><p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest animate-pulse">Arahkan kamera ke barcode produk</p></div></div></div>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-neutral-900/90 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-sm bg-white rounded-[2rem] p-6 relative overflow-hidden">
+            <button onClick={() => setShowScannerModal(false)} className="absolute top-4 right-4 z-10 p-2 bg-white/80 rounded-full text-neutral-400 active:scale-90"><X size={20} /></button>
+            <h3 className="text-sm font-bold mb-4 flex items-center gap-3"><QrCode className="text-primary" size={20} /> SCANNER AKTIF</h3>
+            <div id="reader" className="overflow-hidden rounded-2xl border-4 border-neutral-50 bg-black aspect-square"></div>
+            <div className="mt-4 text-center"><p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest animate-pulse">Arahkan kamera ke barcode produk</p></div>
+          </div>
+        </div>
       )}
 
-      <div className="fixed top-4 md:top-auto md:bottom-20 right-4 left-4 md:left-auto md:right-10 z-[300] flex flex-col gap-3 pointer-events-none items-center md:items-end">{notifications.map(n => (<div key={n.id} className="pointer-events-auto flex items-center gap-3 bg-neutral-900 text-white rounded-2xl px-6 py-4 shadow-2xl animate-fade-in text-[11px] font-bold min-w-[200px] border border-white/10">{n.type === 'success' ? <CheckCircle2 size={16} className="text-green-400" /> : <AlertTriangle size={16} className="text-red-400" />}<span>{n.message}</span></div>))}</div>
-      {showReceiptModal && lastReceipt && (<div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-md no-print animate-fade-in"><div className="w-full max-w-xs bg-white rounded-[2rem] overflow-hidden shadow-2xl flex flex-col"><div id="receipt-content" className="bg-white p-6 md:p-8 text-[10px] font-mono leading-tight text-neutral-900 overflow-y-auto"><div className="text-center mb-6 border-b-2 border-neutral-900 pb-4 shrink-0"><div className="text-base font-bold uppercase tracking-tight mb-1 leading-none">Toko Klontong</div><div className="text-[7px] text-neutral-400 font-bold font-sans uppercase">Jawa Timur, Indonesia</div></div><div className="mb-4 flex justify-between font-bold border-b border-neutral-100 pb-2 text-[8px]"><span>TRX {lastReceipt.id.slice(-6)}</span><span>{lastReceipt.date.split(' ')[0]}</span></div><div className="space-y-3 mb-6 border-b border-dashed border-neutral-300 pb-4 text-left">{lastReceipt.items.map(i => (<div key={i.id}><div className="flex justify-between font-bold uppercase"><span>{i.name}</span><span>{formatPrice(i.quantity * i.price)}</span></div><div className="flex justify-between text-neutral-500 text-[7px] uppercase"><span>{i.quantity} x {formatPrice(i.price)}</span>{i.itemDiscount > 0 && <span>Disc -{formatPrice(i.itemDiscount)}</span>}</div></div>))}</div><div className="space-y-1.5 text-left text-[9px] font-bold"><div className="flex justify-between text-xs"><span>TOTAL</span><span>{formatPrice(lastReceipt.total)}</span></div><div className="flex justify-between text-neutral-500"><span>BAYAR ({lastReceipt.paymentMethod})</span><span>{formatPrice(lastReceipt.paidAmount)}</span></div><div className="flex justify-between text-neutral-400"><span>KEMBALI</span><span>{formatPrice(lastReceipt.change)}</span></div></div><div className="mt-8 pt-4 border-t border-dashed border-neutral-200 text-center text-[7px] font-bold uppercase tracking-widest text-neutral-300 italic">Terima kasih atas kunjungan Anda</div></div><div className="p-4 bg-neutral-50 flex gap-2 border-t border-neutral-100 shrink-0"><button onClick={() => window.print()} className="btn-primary flex-1 h-12 text-[10px] font-bold uppercase"><Printer size={16} /> Print</button><button onClick={() => setShowReceiptModal(false)} className="btn-secondary flex-1 h-12 text-[10px] font-bold uppercase">Tutup</button></div></div></div>)}
+      <div className="fixed top-4 md:top-auto md:bottom-20 right-4 left-4 md:left-auto md:right-10 z-[300] flex flex-col gap-3 pointer-events-none items-center md:items-end">
+        {notifications.map(n => (<div key={n.id} className="pointer-events-auto flex items-center gap-3 bg-neutral-900 text-white rounded-2xl px-6 py-4 shadow-2xl animate-fade-in text-[11px] font-bold min-w-[200px] border border-white/10">{n.type === 'success' ? <CheckCircle2 size={16} className="text-green-400" /> : <AlertTriangle size={16} className="text-red-400" />}<span>{n.message}</span></div>))}
+      </div>
+
+      {showReceiptModal && lastReceipt && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-md no-print animate-fade-in">
+          <div className="w-full max-w-xs bg-white rounded-[2rem] overflow-hidden shadow-2xl flex flex-col relative">
+            <button onClick={() => setShowReceiptModal(false)} className="absolute top-6 right-6 p-2 rounded-full bg-neutral-100 text-neutral-400 active:scale-90 z-20 no-print md:hidden"><X size={20} /></button>
+            <div id="receipt-content" className="bg-white p-6 md:p-8 text-[10px] font-mono leading-tight text-neutral-900 overflow-y-auto">
+              <div className="text-center mb-6 border-b-2 border-neutral-900 pb-4 shrink-0">
+                <div className="text-base font-bold uppercase tracking-tight mb-1 leading-none">Toko Klontong</div>
+                <div className="text-[7px] text-neutral-400 font-bold font-sans uppercase">Jawa Timur, Indonesia</div>
+              </div>
+              <div className="mb-4 flex justify-between font-bold border-b border-neutral-100 pb-2 text-[8px]"><span>TRX {lastReceipt.id.slice(-6)}</span><span>{lastReceipt.date.split(' ')[0]}</span></div>
+              <div className="space-y-3 mb-6 border-b border-dashed border-neutral-300 pb-4 text-left">
+                {lastReceipt.items.map(i => (<div key={i.id}><div className="flex justify-between font-bold uppercase"><span>{i.name}</span><span>{formatPrice(i.quantity * i.price)}</span></div><div className="flex justify-between text-neutral-500 text-[7px] uppercase"><span>{i.quantity} x {formatPrice(i.price)}</span>{i.itemDiscount > 0 && <span>Disc -{formatPrice(i.itemDiscount)}</span>}</div></div>))}
+              </div>
+              <div className="space-y-1.5 text-left text-[9px] font-bold">
+                <div className="flex justify-between text-xs"><span>TOTAL</span><span>{formatPrice(lastReceipt.total)}</span></div>
+                <div className="flex justify-between text-neutral-500"><span>BAYAR ({lastReceipt.paymentMethod})</span><span>{formatPrice(lastReceipt.paidAmount)}</span></div>
+                <div className="flex justify-between text-neutral-400"><span>KEMBALI</span><span>{formatPrice(lastReceipt.change)}</span></div>
+              </div>
+              <div className="mt-8 pt-4 border-t border-dashed border-neutral-200 text-center text-[7px] font-bold uppercase tracking-widest text-neutral-300 italic">Terima kasih atas kunjungan Anda</div>
+            </div>
+            <div className="p-4 bg-neutral-50 flex gap-2 border-t border-neutral-100 shrink-0">
+              <button onClick={() => window.print()} className="btn-primary flex-1 h-12 text-[10px] font-bold uppercase"><Printer size={16} /> Print</button>
+              <button onClick={() => setShowReceiptModal(false)} className="btn-secondary flex-1 h-12 text-[10px] font-bold uppercase">Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
