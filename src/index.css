@@ -61,6 +61,20 @@ h1, h2, h3, .logo-text {
   margin-left: 280px;
   padding: 2rem;
   min-height: 100vh;
+  transition: var(--transition);
+}
+
+/* Mobile Navbar */
+.mobile-header {
+  display: none;
+  background: var(--secondary);
+  color: white;
+  padding: 1rem 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 90;
 }
 
 /* Sidebar Components */
@@ -335,4 +349,100 @@ h1, h2, h3, .logo-text {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 1024px) {
+  .pos-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .cart-panel {
+    position: static;
+    height: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 1rem;
+  }
+
+  .mobile-header {
+    display: flex;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1rem;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .data-table-container {
+    overflow-x: auto;
+  }
+
+  .modal {
+    padding: 1.5rem;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-pos {
+    grid-template-columns: 1fr !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-pos > div:first-child {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border);
+    padding-right: 0 !important;
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* Sidebar Overlay */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 95;
+  display: none;
+}
+
+.sidebar-overlay.show {
+  display: block;
+}
+
+.mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .mobile-only {
+    display: block !important;
+  }
 }

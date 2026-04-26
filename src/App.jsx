@@ -31,7 +31,8 @@ import {
   LineChart,
   PieChart,
   ClipboardList,
-  UserPlus
+  UserPlus,
+  Menu
 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -88,6 +89,7 @@ export default function App() {
   const [showDebtModal, setShowDebtModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [lastReceipt, setLastReceipt] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const barcodeBuffer = useRef('');
   const lastKeyTime = useRef(0);
@@ -306,26 +308,40 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* ... sidebar remains same ... */}
-      <div className="sidebar">
+      {/* Mobile Header */}
+      <div className="mobile-header">
+        <div className="logo" style={{ marginBottom: 0 }}>
+          <div className="logo-icon"><Store size={20} color="white" /></div>
+          <span className="logo-text" style={{ fontSize: '1rem' }}>KLO<span style={{color: 'var(--primary-light)'}}>NTONG</span></span>
+        </div>
+        <button className="btn btn-outline" style={{ padding: '0.5rem', background: 'transparent', border: 'none', color: 'white' }} onClick={() => setIsSidebarOpen(true)}>
+          <Menu size={24} />
+        </button>
+      </div>
+
+      {/* Sidebar Overlay */}
+      <div className={`sidebar-overlay ${isSidebarOpen ? 'show' : ''}`} onClick={() => setIsSidebarOpen(false)}></div>
+
+      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="logo">
           <div className="logo-icon"><Store size={24} color="white" /></div>
           <span className="logo-text">KLO<span style={{color: 'var(--primary-light)'}}>NTONG</span></span>
+          <button className="mobile-only" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'white', display: 'none' }} onClick={() => setIsSidebarOpen(false)}><X size={24}/></button>
         </div>
         <div className="nav-links">
-          <div className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+          <div className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}>
             <LineChart size={20} /> <span>Dashboard</span>
           </div>
-          <div className={`nav-link ${activeTab === 'pos' ? 'active' : ''}`} onClick={() => setActiveTab('pos')}>
+          <div className={`nav-link ${activeTab === 'pos' ? 'active' : ''}`} onClick={() => { setActiveTab('pos'); setIsSidebarOpen(false); }}>
             <ShoppingCart size={20} /> <span>Kasir (POS)</span>
           </div>
-          <div className={`nav-link ${activeTab === 'inventory' ? 'active' : ''}`} onClick={() => setActiveTab('inventory')}>
+          <div className={`nav-link ${activeTab === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveTab('inventory'); setIsSidebarOpen(false); }}>
             <Package size={20} /> <span>Inventori</span>
           </div>
-          <div className={`nav-link ${activeTab === 'debts' ? 'active' : ''}`} onClick={() => setActiveTab('debts')}>
+          <div className={`nav-link ${activeTab === 'debts' ? 'active' : ''}`} onClick={() => { setActiveTab('debts'); setIsSidebarOpen(false); }}>
             <Users size={20} /> <span>Kas Bon (Hutang)</span>
           </div>
-          <div className={`nav-link ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>
+          <div className={`nav-link ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => { setActiveTab('transactions'); setIsSidebarOpen(false); }}>
             <History size={20} /> <span>Laporan Penjualan</span>
           </div>
         </div>
@@ -340,7 +356,7 @@ export default function App() {
           <div className="animate-fade-in">
             <h1 style={{fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem'}}>Ringkasan Toko</h1>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+            <div className="dashboard-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
               <div className="card" style={{ background: 'var(--primary)', color: 'white' }}>
                 <div style={{ opacity: 0.8, fontSize: '0.8rem' }}>Laba Bersih Hari Ini</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '0.5rem' }}>{formatPrice(todayProfit)}</div>
@@ -367,7 +383,7 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
               <div className="card">
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem' }}>Tren Omzet 7 Hari Terakhir</h3>
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '200px', padding: '0 1rem' }}>
@@ -392,7 +408,7 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
               <div className="card">
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Produk Terlaris</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -438,11 +454,11 @@ export default function App() {
         {activeTab === 'pos' && (
           <div className="pos-layout animate-fade-in">
             <section>
-              <div className="flex-between mb-4">
+              <div className="flex-between mb-4" style={{ flexWrap: 'wrap', gap: '1rem' }}>
                 <h1 style={{fontSize: '1.5rem', fontWeight: 800}}>Kasir Utama</h1>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '300px' }}>
                   <button className="btn btn-outline" onClick={() => setShowScannerModal(true)}><ScanLine size={20} /></button>
-                  <div style={{ position: 'relative', width: '300px' }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
                     <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
                     <input type="text" placeholder="Cari barang atau barcode..." className="card" style={{ width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.5rem', borderRadius: '10px' }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
@@ -500,14 +516,14 @@ export default function App() {
         {activeTab === 'inventory' && (
           <div className="animate-fade-in">
             <div className="flex-between mb-6"><div><h1 style={{fontSize: '1.5rem', fontWeight: 800}}>Inventori Produk</h1><p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Kelola ketersediaan barang di rak</p></div><button className="btn btn-primary" onClick={() => { setEditingProduct(null); setShowProductModal(true); }}><Plus size={18} /> Tambah Produk</button></div>
-            <div className="card mb-6" style={{ padding: '1rem', display: 'flex', gap: '1rem' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
+            <div className="card mb-6" style={{ padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
                 <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
                 <input type="text" placeholder="Cari nama atau barcode..." style={{ width: '100%', padding: '0.6rem 0.6rem 0.6rem 2.5rem', border: '1px solid var(--border)', borderRadius: '8px' }} value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} />
               </div>
-              <select style={{ padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '8px' }} value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>{CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select>
+              <select style={{ padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '8px', flex: 1, minWidth: '150px' }} value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>{CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select>
             </div>
-            <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
+            <div className="card data-table-container" style={{ overflow: 'hidden', padding: 0 }}>
               <table className="data-table">
                 <thead><tr><th>Barcode</th><th>Nama</th><th>Kategori</th><th>Modal</th><th>Jual</th><th>Stok</th><th style={{ textAlign: 'right' }}>Aksi</th></tr></thead>
                 <tbody>
@@ -530,8 +546,8 @@ export default function App() {
 
         {activeTab === 'debts' && (
           <div className="animate-fade-in">
-            <div className="flex-between mb-6"><div><h1 style={{fontSize: '1.5rem', fontWeight: 800}}>Kas Bon (Hutang Pelanggan)</h1><p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Catat pelanggan yang belum membayar lunas</p></div><button className="btn btn-primary" onClick={() => setShowDebtModal(true)}><Plus size={18} /> Catat Hutang</button></div>
-            <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
+            <div className="flex-between mb-6"><div><h1 style={{fontSize: '1.5rem', fontWeight: 800}}>Kas Bon</h1><p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Catat hutang pelanggan</p></div><button className="btn btn-primary" onClick={() => setShowDebtModal(true)}><Plus size={18} /> Catat Hutang</button></div>
+            <div className="card data-table-container" style={{ overflow: 'hidden', padding: 0 }}>
               <table className="data-table">
                 <thead><tr><th>Nama Pelanggan</th><th>Jumlah</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr></thead>
                 <tbody>
@@ -558,7 +574,7 @@ export default function App() {
               <h1 style={{fontSize: '1.5rem', fontWeight: 800}}>Laporan Penjualan</h1>
               <button className="btn btn-outline" onClick={exportSalesCSV}><Download size={18}/> Export CSV</button>
             </div>
-            <div className="card" style={{ overflow: 'hidden', padding: 0 }}>
+            <div className="card data-table-container" style={{ overflow: 'hidden', padding: 0 }}>
               <table className="data-table">
                 <thead><tr><th>ID</th><th>Waktu</th><th>Pelanggan</th><th>Omzet</th><th>Profit</th><th>Metode</th></tr></thead>
                 <tbody>{transactions.map(t => (<tr key={t.id}><td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{t.id}</td><td>{t.date}</td><td style={{fontWeight: 600}}>{t.customerName}</td><td style={{ fontWeight: 700 }}>{formatPrice(t.total)}</td><td style={{ color: '#10b981' }}>+{formatPrice(t.profit)}</td><td><span style={{padding: '2px 6px', background: '#f3f4f6', borderRadius: '4px', fontSize: '0.75rem'}}>{t.paymentMethod}</span></td></tr>))}</tbody>
@@ -586,7 +602,7 @@ export default function App() {
       {/* MODALS */}
       {showPaymentModal && (
         <div className="modal-overlay">
-          <div className="modal animate-fade-in" style={{ maxWidth: '850px', display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem' }}>
+          <div className="modal modal-pos animate-fade-in" style={{ maxWidth: '850px', display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem' }}>
             <div style={{ borderRight: '1px solid var(--border)', paddingRight: '2rem' }}>
               <div className="flex-between mb-6"><h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Pembayaran</h2><button onClick={() => setShowPaymentModal(false)} style={{ background: 'none', border: 'none' }}><X /></button></div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '2rem' }}>
