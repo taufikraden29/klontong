@@ -96,10 +96,21 @@ export default function App() {
   const barcodeBuffer = useRef('');
   const lastKeyTime = useRef(0);
 
-  // Persistence
-  useEffect(() => localStorage.setItem('klontong_products', JSON.stringify(products)), [products]);
-  useEffect(() => localStorage.setItem('klontong_transactions', JSON.stringify(transactions)), [transactions]);
-  useEffect(() => localStorage.setItem('klontong_debts', JSON.stringify(debts)), [debts]);
+  // Optimized Persistence with Debounce (simplified)
+  useEffect(() => {
+    const timeout = setTimeout(() => localStorage.setItem('klontong_products', JSON.stringify(products)), 1000);
+    return () => clearTimeout(timeout);
+  }, [products]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => localStorage.setItem('klontong_transactions', JSON.stringify(transactions)), 1000);
+    return () => clearTimeout(timeout);
+  }, [transactions]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => localStorage.setItem('klontong_debts', JSON.stringify(debts)), 1000);
+    return () => clearTimeout(timeout);
+  }, [debts]);
 
   // Global Keyboard Listener
   useEffect(() => {
@@ -181,7 +192,13 @@ export default function App() {
       }
       return [...prev, { ...product, quantity: 1 }];
     });
-    if (activeTab !== 'pos') notify(`Ditambahkan ke keranjang: ${product.name}`);
+    
+    // Feedback
+    if (activeTab !== 'pos') notify(`Ditambahkan: ${product.name}`);
+    
+    // Auto-scroll cart in POS
+    const cartEl = document.querySelector('.cart-items');
+    if (cartEl) setTimeout(() => cartEl.scrollTop = cartEl.scrollHeight, 100);
   };
 
   const updateCartQuantity = (id, delta) => {
@@ -248,6 +265,10 @@ export default function App() {
     setLastReceipt(newTransaction);
     setCart([]); setDiscount(0); setPaymentAmount(''); setPaymentMethod('Tunai'); setDebtCustomerName(''); setShowPaymentModal(false); setShowReceiptModal(true);
     notify('Transaksi Berhasil!', 'success');
+  };
+
+  const handlePrintReceipt = () => {
+    window.print();
   };
 
   const saveProduct = (e) => {
@@ -513,12 +534,30 @@ export default function App() {
                   <button className="btn btn-outline" onClick={() => { setScannerMode('pos'); setShowScannerModal(true); }}><ScanLine size={20} /></button>
                   <div style={{ position: 'relative', flex: 1 }}>
                     <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-                    <input type="text" placeholder="Cari barang atau barcode..." className="card" style={{ width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.5rem', borderRadius: '10px' }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <input type="text" placeholder="Cari barang atau barcode..." className="card" style={{ width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.5rem', borderRadius: '10px' }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} autoFocus />
                   </div>
                 </div>
               </div>
+
+              {/* POS Category Filter */}
+              <div className="pos-categories mb-4" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                {CATEGORIES.map(cat => (
+                  <button 
+                    key={cat} 
+                    className={`btn ${selectedCategory === cat ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ whiteSpace: 'nowrap', padding: '0.5rem 1.25rem', borderRadius: '30px', fontSize: '0.85rem' }}
+                    onClick={() => setSelectedCategory(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
               <div className="product-grid">
-                {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || (p.barcode && p.barcode.includes(searchTerm))).map(product => (
+                {products
+                  .filter(p => (selectedCategory === 'Semua' || p.category === selectedCategory))
+                  .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || (p.barcode && p.barcode.includes(searchTerm)))
+                  .map(product => (
                   <div key={product.id} className="card product-card" onClick={() => addToCart(product)} style={{ opacity: product.stock <= 0 ? 0.5 : 1 }}>
                     <div className="product-image"><Package size={32} strokeWidth={1.5} /></div>
                     <div>
@@ -722,17 +761,36 @@ export default function App() {
           <div className="modal animate-fade-in" style={{ maxWidth: '400px', textAlign: 'center' }}>
             <CheckCircle2 size={48} color="#10b981" style={{ margin: '0 auto 1rem' }} />
             <h2 style={{ fontWeight: 800, marginBottom: '1rem' }}>Transaksi Berhasil!</h2>
-            <div style={{ textAlign: 'left', background: 'white', padding: '1rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '0.8rem', fontFamily: 'monospace', marginBottom: '1.5rem' }}>
-              <div style={{ textAlign: 'center', fontWeight: 800 }}>TOKO MADURA</div>
+            <div id="receipt-content" style={{ textAlign: 'left', background: 'white', padding: '1.5rem', border: '1px solid #ddd', borderRadius: '12px', fontSize: '0.85rem', fontFamily: 'monospace', marginBottom: '1.5rem', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.05)' }}>
+              <div style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.1rem' }}>TOKO KELONTONG</div>
+              <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#666', marginBottom: '1rem' }}>{lastReceipt.date}</div>
               <div style={{ borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
-              <div className="flex-between"><span>{lastReceipt.id}</span><span>{lastReceipt.customerName}</span></div>
+              <div className="flex-between"><span>ID: {lastReceipt.id.slice(-8)}</span><span>{lastReceipt.customerName}</span></div>
               <div style={{ borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
-              {lastReceipt.items.map(i => <div key={i.id} className="flex-between"><span>{i.name} x{i.quantity}</span><span>{formatPrice(i.price * i.quantity)}</span></div>)}
+              <div style={{ margin: '1rem 0' }}>
+                {lastReceipt.items.map(i => (
+                  <div key={i.id} style={{ marginBottom: '0.5rem' }}>
+                    <div className="flex-between"><span>{i.name}</span><span>{formatPrice(i.price * i.quantity)}</span></div>
+                    <div style={{ fontSize: '0.75rem', color: '#666' }}>{i.quantity} {i.unit} x {formatPrice(i.price)}</div>
+                  </div>
+                ))}
+              </div>
               <div style={{ borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
-              <div className="flex-between" style={{ fontWeight: 800 }}><span>TOTAL ({lastReceipt.paymentMethod})</span><span>{formatPrice(lastReceipt.total)}</span></div>
-              {lastReceipt.paymentMethod === 'Hutang' && <div style={{ textAlign: 'center', marginTop: '0.5rem', color: '#ef4444' }}>*** STATUS: KAS BON ***</div>}
+              <div className="flex-between" style={{ fontSize: '1rem', fontWeight: 800, marginTop: '1rem' }}><span>TOTAL</span><span>{formatPrice(lastReceipt.total)}</span></div>
+              <div className="flex-between" style={{ color: '#666' }}><span>Metode</span><span>{lastReceipt.paymentMethod}</span></div>
+              {lastReceipt.paymentMethod === 'Tunai' && (
+                <>
+                  <div className="flex-between" style={{ color: '#666' }}><span>Bayar</span><span>{formatPrice(lastReceipt.paidAmount)}</span></div>
+                  <div className="flex-between" style={{ color: '#666' }}><span>Kembali</span><span>{formatPrice(lastReceipt.change)}</span></div>
+                </>
+              )}
+              {lastReceipt.paymentMethod === 'Hutang' && <div style={{ textAlign: 'center', marginTop: '1rem', color: '#ef4444', fontWeight: 800 }}>*** BELUM LUNAS ***</div>}
+              <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.75rem' }}>Terima Kasih Atas Kunjungan Anda</div>
             </div>
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowReceiptModal(false)}>Tutup</button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <button className="btn btn-outline" style={{ width: '100%' }} onClick={handlePrintReceipt}><Printer size={18}/> Cetak</button>
+              <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowReceiptModal(false)}>Selesai</button>
+            </div>
           </div>
         </div>
       )}
