@@ -94,8 +94,9 @@ export default function App() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [lastReceipt, setLastReceipt] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [scannerMode, setScannerMode] = useState('pos'); // 'pos' or 'product'
+  const [scannerMode, setScannerMode] = useState('pos'); // 'pos', 'product', or 'search'
   const [scannedBarcode, setScannedBarcode] = useState('');
+  const [searchTarget, setSearchTarget] = useState('pos'); // 'pos' or 'inventory'
   
   const barcodeBuffer = useRef('');
   const lastKeyTime = useRef(0);
@@ -168,6 +169,13 @@ export default function App() {
     if (scannerMode === 'product') {
       setScannedBarcode(code);
       notify(`Barcode terdeteksi: ${code}`);
+      return;
+    }
+
+    if (scannerMode === 'search') {
+      if (searchTarget === 'pos') setSearchTerm(code);
+      else setInventorySearch(code);
+      notify(`Mencari barcode: ${code}`);
       return;
     }
 
@@ -585,10 +593,18 @@ export default function App() {
               <div className="flex-between mb-4" style={{ flexWrap: 'wrap', gap: '1rem' }}>
                 <h1 style={{fontSize: '1.5rem', fontWeight: 800}}>Kasir Utama</h1>
                 <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '300px' }}>
-                  <button className="btn btn-outline" onClick={() => { setScannerMode('pos'); setShowScannerModal(true); }}><ScanLine size={20} /></button>
+                  <button className="btn btn-outline" title="Scan Tambah Barang" onClick={() => { setScannerMode('pos'); setShowScannerModal(true); }}><ScanLine size={20} /></button>
                   <div style={{ position: 'relative', flex: 1 }}>
                     <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-                    <input type="text" placeholder="Cari barang atau barcode..." className="card" style={{ width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.5rem', borderRadius: '10px' }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} autoFocus />
+                    <input type="text" placeholder="Cari barang atau barcode..." className="card" style={{ width: '100%', padding: '0.75rem 3rem 0.75rem 2.5rem', borderRadius: '10px' }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} autoFocus />
+                    <button 
+                      className="mobile-only" 
+                      style={{ position: 'absolute', right: '40px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#9ca3af' }}
+                      onClick={() => { setScannerMode('search'); setSearchTarget('pos'); setShowScannerModal(true); }}
+                    >
+                      <QrCode size={18} />
+                    </button>
+                    {searchTerm && <X size={18} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', cursor: 'pointer' }} onClick={() => setSearchTerm('')} />}
                   </div>
                 </div>
               </div>
@@ -662,10 +678,16 @@ export default function App() {
         {activeTab === 'inventory' && (
           <div className="animate-fade-in">
             <div className="flex-between mb-6"><div><h1 style={{fontSize: '1.5rem', fontWeight: 800}}>Inventori Produk</h1><p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Kelola ketersediaan barang di rak</p></div><button className="btn btn-primary" onClick={() => { setEditingProduct(null); setShowProductModal(true); }}><Plus size={18} /> Tambah Produk</button></div>
-            <div className="card mb-6" style={{ padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
+            <div className="card mb-6" style={{ padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 2, minWidth: '200px' }}>
                 <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-                <input type="text" placeholder="Cari nama atau barcode..." style={{ width: '100%', padding: '0.6rem 0.6rem 0.6rem 2.5rem', border: '1px solid var(--border)', borderRadius: '8px' }} value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} />
+                <input type="text" placeholder="Cari nama atau barcode..." style={{ width: '100%', padding: '0.6rem 3rem 0.6rem 2.5rem', border: '1px solid var(--border)', borderRadius: '8px' }} value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} />
+                <button 
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}
+                  onClick={() => { setScannerMode('search'); setSearchTarget('inventory'); setShowScannerModal(true); }}
+                >
+                  <ScanLine size={18} />
+                </button>
               </div>
               <select style={{ padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '8px', flex: 1, minWidth: '150px' }} value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>{CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select>
             </div>
@@ -675,19 +697,19 @@ export default function App() {
                 <tbody>
                   {products.filter(p => (p.name.toLowerCase().includes(inventorySearch.toLowerCase()) || (p.barcode && p.barcode.includes(inventorySearch))) && (selectedCategory === 'Semua' || p.category === selectedCategory)).map(p => (
                     <tr key={p.id}>
-                      <td style={{ fontFamily: 'monospace' }}>{p.barcode || '-'}</td>
-                      <td style={{ fontWeight: 600 }}>{p.name}</td>
-                      <td><span style={{ padding: '2px 8px', background: '#f3f4f6', borderRadius: '4px', fontSize: '0.7rem' }}>{p.category}</span></td>
-                      <td>{formatPrice(p.costPrice)}</td>
-                      <td style={{ fontWeight: 700 }}>{formatPrice(p.price)}</td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <td data-label="Barcode" style={{ fontFamily: 'monospace' }}>{p.barcode || '-'}</td>
+                      <td data-label="Nama" style={{ fontWeight: 600 }}>{p.name}</td>
+                      <td data-label="Kategori"><span style={{ padding: '2px 8px', background: '#f3f4f6', borderRadius: '4px', fontSize: '0.7rem' }}>{p.category}</span></td>
+                      <td data-label="Modal">{formatPrice(p.costPrice)}</td>
+                      <td data-label="Jual" style={{ fontWeight: 700 }}>{formatPrice(p.price)}</td>
+                      <td data-label="Stok">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-end' }}>
                           <button className="btn btn-outline" style={{ padding: '2px 8px', minWidth: '30px' }} onClick={() => updateStockQuickly(p.id, -1)}>-</button>
                           <span style={{ fontWeight: 600, minWidth: '40px', textAlign: 'center' }}>{p.stock}</span>
                           <button className="btn btn-outline" style={{ padding: '2px 8px', minWidth: '30px' }} onClick={() => updateStockQuickly(p.id, 1)}>+</button>
                         </div>
                       </td>
-                      <td style={{ textAlign: 'right' }}><button className="btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => { setEditingProduct(p); setShowProductModal(true); }}><Edit2 size={16} /></button></td>
+                      <td data-label="Aksi" style={{ textAlign: 'right' }}><button className="btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => { setEditingProduct(p); setShowProductModal(true); }}><Edit2 size={16} /></button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -706,11 +728,11 @@ export default function App() {
                   {debts.length === 0 ? <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>Tidak ada data hutang</td></tr> : 
                     debts.map(d => (
                       <tr key={d.id}>
-                        <td style={{ fontWeight: 600 }}>{d.name}</td>
-                        <td style={{ fontWeight: 700, color: d.status === 'Lunas' ? '#10b981' : '#ef4444' }}>{formatPrice(d.amount)}</td>
-                        <td>{d.date}</td>
-                        <td><span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, background: d.status === 'Lunas' ? '#ecfdf5' : '#fee2e2', color: d.status === 'Lunas' ? '#047857' : '#b91c1c' }}>{d.status}</span></td>
-                        <td>{d.status !== 'Lunas' && <button className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={() => markDebtPaid(d.id, d.name)}>Tandai Lunas</button>}</td>
+                        <td data-label="Pelanggan" style={{ fontWeight: 600 }}>{d.name}</td>
+                        <td data-label="Jumlah" style={{ fontWeight: 700, color: d.status === 'Lunas' ? '#10b981' : '#ef4444' }}>{formatPrice(d.amount)}</td>
+                        <td data-label="Tanggal">{d.date}</td>
+                        <td data-label="Status"><span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, background: d.status === 'Lunas' ? '#ecfdf5' : '#fee2e2', color: d.status === 'Lunas' ? '#047857' : '#b91c1c' }}>{d.status}</span></td>
+                        <td data-label="Aksi">{d.status !== 'Lunas' && <button className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={() => markDebtPaid(d.id, d.name)}>Tandai Lunas</button>}</td>
                       </tr>
                     ))
                   }
@@ -729,7 +751,16 @@ export default function App() {
             <div className="card data-table-container" style={{ overflow: 'hidden', padding: 0 }}>
               <table className="data-table">
                 <thead><tr><th>ID</th><th>Waktu</th><th>Pelanggan</th><th>Omzet</th><th>Profit</th><th>Metode</th></tr></thead>
-                <tbody>{transactions.map(t => (<tr key={t.id}><td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{t.id}</td><td>{t.date}</td><td style={{fontWeight: 600}}>{t.customerName}</td><td style={{ fontWeight: 700 }}>{formatPrice(t.total)}</td><td style={{ color: '#10b981' }}>+{formatPrice(t.profit)}</td><td><span style={{padding: '2px 6px', background: '#f3f4f6', borderRadius: '4px', fontSize: '0.75rem'}}>{t.paymentMethod}</span></td></tr>))}</tbody>
+                <tbody>{transactions.map(t => (
+                  <tr key={t.id}>
+                    <td data-label="ID" style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{t.id.slice(-8)}</td>
+                    <td data-label="Waktu">{t.date}</td>
+                    <td data-label="Pelanggan" style={{fontWeight: 600}}>{t.customerName}</td>
+                    <td data-label="Omzet" style={{ fontWeight: 700 }}>{formatPrice(t.total)}</td>
+                    <td data-label="Profit" style={{ color: '#10b981' }}>+{formatPrice(t.profit)}</td>
+                    <td data-label="Metode"><span style={{padding: '2px 6px', background: '#f3f4f6', borderRadius: '4px', fontSize: '0.75rem'}}>{t.paymentMethod}</span></td>
+                  </tr>
+                ))}</tbody>
               </table>
             </div>
           </div>

@@ -108,8 +108,8 @@ h1, h2, h3, .logo-text {
   justify-content: space-between;
   position: sticky;
   top: 0;
-  z-index: 90;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  z-index: 150;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 @media (max-width: 768px) {
@@ -214,7 +214,47 @@ h1, h2, h3, .logo-text {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 600px; /* Force scroll on small screens */
+}
+
+@media (max-width: 640px) {
+  .data-table, .data-table thead, .data-table tbody, .data-table th, .data-table td, .data-table tr {
+    display: block;
+  }
+  .data-table thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  .data-table tr {
+    border: 1px solid var(--border);
+    margin-bottom: 1rem;
+    background: white;
+    border-radius: 8px;
+    padding: 0.5rem;
+  }
+  .data-table td {
+    border: none;
+    border-bottom: 1px solid #f3f4f6;
+    position: relative;
+    padding-left: 50% !important;
+    text-align: right !important;
+  }
+  .data-table td:before {
+    content: attr(data-label);
+    position: absolute;
+    left: 1rem;
+    width: 45%;
+    padding-right: 10px;
+    white-space: nowrap;
+    text-align: left;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
+  .data-table td:last-child {
+    border-bottom: 0;
+  }
 }
 
 /* Modals */
@@ -461,12 +501,52 @@ h1, h2, h3, .logo-text {
   animation: fadeIn 0.4s ease-out forwards;
 }
 
-.mobile-only {
-  display: none !important;
-}
-
 @media (max-width: 768px) {
   .mobile-only {
     display: block !important;
   }
+}
+
+/* Print Styles */
+@media print {
+  .sidebar, .mobile-header, .btn, .cart-panel, section > .flex-between, .pos-categories, .toast-container, .modal-overlay button {
+    display: none !important;
+  }
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  #receipt-content {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    width: 80mm !important; /* Typical receipt width */
+  }
+  .modal-overlay {
+    position: static !important;
+    background: none !important;
+    padding: 0 !important;
+  }
+  .modal {
+    box-shadow: none !important;
+    padding: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
