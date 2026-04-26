@@ -15,14 +15,9 @@ import {
   Users,
   Settings as SettingsIcon,
   Eraser,
-  QrCode,
   Download,
   Upload,
-  Database,
-  Printer,
-  ChevronRight,
-  TrendingUp,
-  AlertTriangle
+  Database
 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -35,7 +30,6 @@ const INITIAL_PRODUCTS = [
 ];
 
 const CATEGORIES = ['Semua', 'Pokok', 'Makanan', 'Minuman', 'Rokok', 'Cemilan', 'Lainnya'];
-const UNITS = ['Pcs', 'Kg', 'Bag', 'Box', 'Liter', 'Sachet', 'Botol'];
 const QUICK_CASH = [5000, 10000, 20000, 50000, 100000];
 
 const formatPrice = (amount) => {
@@ -252,6 +246,45 @@ export default function App() {
     notify('Stok diperbarui!');
   };
 
+  const updateStockQuickly = (id, amount) => {
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, stock: Math.max(0, p.stock + amount) } : p));
+  };
+
+  const exportAllData = () => {
+    const data = { products, transactions, debts, exportDate: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `backup_klontong_${new Date().toLocaleDateString()}.json`;
+    link.click();
+    notify('Backup berhasil didownload!');
+  };
+
+  const importAllData = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (data.products) setProducts(data.products);
+        if (data.transactions) setTransactions(data.transactions);
+        if (data.debts) setDebts(data.debts);
+        notify('Data dipulihkan!', 'success');
+      } catch (err) { notify('Gagal import data!', 'error'); }
+    };
+    reader.readAsText(file);
+  };
+
+  const addDebtManual = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    setDebts(prev => [{ id: Date.now(), name: formData.get('customerName'), amount: Number(formData.get('amount')), date: new Date().toLocaleDateString('id-ID'), status: 'Belum Lunas' }, ...prev]);
+    setShowDebtModal(false);
+    notify('Hutang dicatat!');
+  };
+
   // Statistics
   const todayRevenue = transactions.filter(t => t.date.includes(new Date().toLocaleDateString('id-ID'))).reduce((s, t) => s + t.total, 0);
   const todayProfit = transactions.filter(t => t.date.includes(new Date().toLocaleDateString('id-ID'))).reduce((s, t) => s + t.profit, 0);
@@ -461,7 +494,6 @@ export default function App() {
           </div>
         )}
 
-        {/* INVENTORY, DEBTS, etc will follow similar tailwind pattern */}
         {activeTab === 'inventory' && (
           <div className="animate-slide-up">
             <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
@@ -605,7 +637,7 @@ export default function App() {
         )}
       </main>
 
-      {/* MODALS (Simplified for demo, will implement full later) */}
+      {/* MODALS */}
       {showPaymentModal && (
         <div className="modal-overlay">
           <div className="modal !p-8 animate-slide-up">
@@ -656,53 +688,167 @@ export default function App() {
         </div>
       )}
 
-      {/* NOTIFICATIONS */}
-      <div className="toast-container">
-        {notifications.map(n => (
-          <div key={n.id} className={`toast border-l-4 ${n.type === 'success' ? 'border-primary' : 'border-amber-500'}`}>
-            <span className="text-sm font-bold">{n.message}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* MOBILE CART DRAWER */}
-      {showMobileCart && (
-        <div className="modal-overlay !items-end !p-0">
-          <div className="modal !max-w-none rounded-t-3xl p-6 animate-slide-up">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl">Keranjang Belanja</h2>
-              <button onClick={() => setShowMobileCart(false)} className="rounded-full bg-slate-100 p-2"><X size={20} /></button>
+      {showProductModal && (
+        <div className="modal-overlay">
+          <form onSubmit={saveProduct} className="modal animate-slide-up">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl">{editingProduct ? 'Edit Produk' : 'Produk Baru'}</h2>
+              <button type="button" onClick={() => setShowProductModal(false)}><X /></button>
             </div>
-            <div className="mb-8 max-h-[50vh] overflow-y-auto space-y-4">
-              {cart.map(item => (
-                <div key={item.id} className="flex items-center justify-between border-b border-slate-50 pb-4 last:border-0">
-                  <div className="flex-1"><div className="font-bold">{item.name}</div><div className="text-xs text-slate-400">{formatPrice(item.price)}</div></div>
-                  <div className="flex items-center rounded-xl bg-slate-100 p-1">
-                    <button onClick={() => updateCartQuantity(item.id, -1)} className="px-3 font-black">-</button>
-                    <span className="w-8 text-center font-black">{item.quantity}</span>
-                    <button onClick={() => updateCartQuantity(item.id, 1)} className="px-3 font-black">+</button>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="col-span-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Nama Produk</label>
+                <input name="name" defaultValue={editingProduct?.name} required className="w-full rounded-xl border p-3" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Barcode</label>
+                <div className="relative">
+                  <input name="barcode" value={scannedBarcode || editingProduct?.barcode || ''} onChange={e => setScannedBarcode(e.target.value)} className="w-full rounded-xl border p-3 pr-10" />
+                  <button type="button" onClick={() => { setScannerMode('product'); setShowScannerModal(true); }} className="absolute right-3 top-3 text-primary"><ScanLine size={18} /></button>
                 </div>
-              ))}
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Kategori</label>
+                <select name="category" defaultValue={editingProduct?.category} className="w-full rounded-xl border p-3">
+                  {CATEGORIES.slice(1).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Harga Modal</label>
+                <input name="costPrice" type="number" defaultValue={editingProduct?.costPrice} required className="w-full rounded-xl border p-3" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Harga Jual</label>
+                <input name="price" type="number" defaultValue={editingProduct?.price} required className="w-full rounded-xl border p-3" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Stok Awal</label>
+                <input name="stock" type="number" defaultValue={editingProduct?.stock} required className="w-full rounded-xl border p-3" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Satuan</label>
+                <select name="unit" defaultValue={editingProduct?.unit} className="w-full rounded-xl border p-3">
+                  {['Pcs', 'Kg', 'Bag', 'Box', 'Liter'].map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
             </div>
-            <div className="bg-slate-50 p-5 rounded-2xl mb-6">
-              <div className="flex justify-between text-2xl font-black mb-2"><span>TOTAL</span><span className="text-primary">{formatPrice(cart.reduce((s, i) => s + (i.price * i.quantity), 0) - discount)}</span></div>
+            <button className="btn btn-primary w-full !py-4">SIMPAN PRODUK</button>
+          </form>
+        </div>
+      )}
+
+      {showDebtModal && (
+        <div className="modal-overlay">
+          <form onSubmit={addDebtManual} className="modal !max-w-md animate-slide-up">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl">Catat Hutang</h2>
+              <button type="button" onClick={() => setShowDebtModal(false)}><X /></button>
             </div>
-            <button onClick={() => { setShowMobileCart(false); setShowPaymentModal(true); }} className="btn btn-primary w-full !py-4">LANJUT PEMBAYARAN</button>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Nama Pelanggan</label>
+                <input name="customerName" required className="w-full rounded-xl border p-3" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">Jumlah Hutang</label>
+                <input name="amount" type="number" required className="w-full rounded-xl border p-3" />
+              </div>
+            </div>
+            <button className="btn btn-primary w-full">SIMPAN DATA</button>
+          </form>
+        </div>
+      )}
+
+      {showRestockModal && (
+        <div className="modal-overlay">
+          <div className="modal !max-w-3xl animate-slide-up">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl">Restok Barang</h2>
+              <button onClick={() => setShowRestockModal(false)}><X /></button>
+            </div>
+            <div className="mb-6 relative">
+              <Search className="absolute left-3 top-3.5 text-slate-400" size={18} />
+              <input type="text" placeholder="Cari barang atau scan..." className="w-full rounded-xl border p-3 pl-10" onChange={e => {
+                const p = products.find(prod => prod.name.toLowerCase().includes(e.target.value.toLowerCase()) || prod.barcode === e.target.value);
+                if (p && e.target.value.length > 2) { addToRestock(p); e.target.value = ''; }
+              }} />
+              <button onClick={() => { setScannerMode('restock'); setShowScannerModal(true); }} className="absolute right-3 top-3 text-primary"><ScanLine size={18} /></button>
+            </div>
+            <div className="max-h-60 overflow-y-auto mb-6">
+              <table className="w-full text-sm">
+                <thead><tr className="text-slate-400 border-b">
+                  <th className="text-left py-2">Barang</th>
+                  <th className="text-center py-2">Tambah</th>
+                  <th className="text-right py-2">Modal Baru</th>
+                  <th className="w-10"></th>
+                </tr></thead>
+                <tbody>
+                  {restockCart.map(item => (
+                    <tr key={item.id} className="border-b last:border-0">
+                      <td className="py-3 font-bold">{item.name}</td>
+                      <td className="py-3"><input type="number" className="w-16 mx-auto block border rounded p-1 text-center" value={item.addedQty} onChange={e => setRestockCart(prev => prev.map(i => i.id === item.id ? { ...i, addedQty: e.target.value } : i))} /></td>
+                      <td className="py-3"><input type="number" className="w-24 ml-auto block border rounded p-1 text-right" value={item.newCostPrice} onChange={e => setRestockCart(prev => prev.map(i => i.id === item.id ? { ...i, newCostPrice: e.target.value } : i))} /></td>
+                      <td><button onClick={() => setRestockCart(prev => prev.filter(i => i.id !== item.id))} className="text-red-400 p-2"><Trash2 size={16} /></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button onClick={finalizeRestock} className="btn btn-primary w-full" disabled={restockCart.length === 0}>SIMPAN PERUBAHAN</button>
           </div>
         </div>
       )}
 
+      {showReceiptModal && lastReceipt && (
+        <div className="modal-overlay no-print">
+          <div className="modal !max-w-sm animate-slide-up">
+            <div id="receipt-content" className="bg-white p-4 font-mono text-xs">
+              <div className="text-center mb-4">
+                <div className="text-lg font-bold">TOKO KLONTONG MADURA</div>
+                <div>Jl. Raya Madura No. 88</div>
+                <div>--------------------------------</div>
+              </div>
+              <div className="mb-2 flex justify-between"><span>{lastReceipt.date}</span><span>{lastReceipt.id.slice(-8)}</span></div>
+              <div className="mb-4">--------------------------------</div>
+              {lastReceipt.items.map(i => (
+                <div key={i.id} className="mb-1">
+                  <div>{i.name}</div>
+                  <div className="flex justify-between"><span>{i.quantity} x {formatPrice(i.price)}</span><span>{formatPrice(i.quantity * i.price)}</span></div>
+                </div>
+              ))}
+              <div className="mt-4 border-t pt-2">
+                <div className="flex justify-between font-bold"><span>TOTAL</span><span>{formatPrice(lastReceipt.total)}</span></div>
+                <div className="flex justify-between"><span>BAYAR ({lastReceipt.paymentMethod})</span><span>{formatPrice(lastReceipt.paidAmount)}</span></div>
+                <div className="flex justify-between"><span>KEMBALI</span><span>{formatPrice(lastReceipt.change)}</span></div>
+              </div>
+              <div className="text-center mt-6">TERIMA KASIH</div>
+            </div>
+            <div className="mt-6 flex gap-2">
+              <button onClick={() => window.print()} className="btn btn-primary flex-1"><Printer size={18} /> CETAK</button>
+              <button onClick={() => setShowReceiptModal(false)} className="btn btn-outline flex-1">TUTUP</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NOTIFICATIONS */}
+      <div className="fixed bottom-20 right-4 z-[60] flex flex-col gap-2 pointer-events-none">
+        {notifications.map(n => (
+          <div key={n.id} className="toast pointer-events-auto bg-white shadow-xl animate-slide-up border-l-4 border-primary">
+            {n.message}
+          </div>
+        ))}
+      </div>
+
       {/* SCANNER MODAL */}
       {showScannerModal && (
-        <div className="modal-overlay">
+        <div className="modal-overlay z-[70]">
           <div className="modal !max-w-md p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-bold uppercase tracking-widest text-xs">Scanner Kamera</h3>
               <button onClick={() => setShowScannerModal(false)}><X /></button>
             </div>
             <div id="reader" className="overflow-hidden rounded-2xl bg-slate-100"></div>
-            <p className="mt-4 text-center text-[10px] text-slate-400">Arahkan barcode ke kotak di atas</p>
           </div>
         </div>
       )}
